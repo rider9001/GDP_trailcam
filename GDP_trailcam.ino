@@ -2,10 +2,13 @@
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
+#include <UMS3.h>
 
 size_t writeBuf(fs::FS &fs, const char *path, const uint8_t *buf, const size_t len);
 
 #define PWR_DWN_PIN 17
+
+UMS3 ums3;
 
 static camera_config_t camera_example_config = {
         .pin_pwdn       = PWR_DWN_PIN,
@@ -33,8 +36,8 @@ static camera_config_t camera_example_config = {
         // Pixel clock, used to indicate when new data is available
         .pin_pclk       = 5,
 
-        // Clock freq used by camera, generated at 24MHz
-        .xclk_freq_hz   = 24000000,
+        // Clock freq used by camera, 8MHz tested to be best, except for images above FHD resolution
+        .xclk_freq_hz   = 8000000,
 
         // LEDC timers used to gen camera clock signal, unused here but should be filled with
         // these enums to prevent compiler complaining
@@ -44,7 +47,7 @@ static camera_config_t camera_example_config = {
         // Format and framesize settings, not sure if jpeg quality has any effect outside of JPEG mode
         .pixel_format   = PIXFORMAT_JPEG,
         .frame_size     = FRAMESIZE_HD,
-        .jpeg_quality   = 20,
+        .jpeg_quality   = 5,
 
         .fb_count       = 2,
 
@@ -64,6 +67,7 @@ void setup() {
   Serial.begin(115200);
   while(!Serial){delay(10);}
   Serial.println("Alive");
+  ums3.begin();
 
   if (psramFound())
   {
@@ -74,18 +78,7 @@ void setup() {
     Serial.println("PSRAM not present");
   }
 
-  // Probe for cameras
-  camera_model_t type;
-  esp_err_t err = camera_probe(&config, &type);
-
-  while (err != ESP_OK)
-  {
-    Serial.println("!Camera probe failed!");
-    Serial.println("Re-probing...");
-    delay(100);
-  }
-
-  err = esp_camera_init(&camera_example_config);
+  esp_err_t err = esp_camera_init(&camera_example_config);
   if (err != ESP_OK)
   {
     Serial.println("!Camera setup failed!");
@@ -101,9 +94,16 @@ void setup() {
   Serial.print("Camera name is: ");
   Serial.println(info->name);
 
+  sensor_t * s = esp_camera_sensor_get();
+  s->set_brightness(s, 1);   // up the brightness just a bit
+  s->set_saturation(s, -2);  // lower the saturation
+
   //capture a frame
   Serial.println("Capturing frame...");
+  ums3.toggleBlueLED();
   camera_fb_t * fb = esp_camera_fb_get();
+  ums3.toggleBlueLED();
+  
   if (!fb) {
       Serial.println("Frame buffer could not be acquired");
       // Pull camera power-off pin high to prevent heating
@@ -150,7 +150,10 @@ void setup() {
 
 void loop() {
   // nothing happens after setup
-
+  while(1)
+  {
+    delay(1000); 
+  }
 }
 
 

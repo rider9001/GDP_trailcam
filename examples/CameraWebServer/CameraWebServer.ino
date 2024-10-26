@@ -68,7 +68,7 @@ void setup() {
   config.pin_sccb_scl = 9;
   config.pin_pwdn = 17;
   config.pin_reset = 18;
-  config.xclk_freq_hz = 20000000;
+  config.xclk_freq_hz = 8000000; // 8MHz has been found to be best
   config.frame_size = FRAMESIZE_UXGA;
   config.pixel_format = PIXFORMAT_JPEG;  // for streaming
   //config.pixel_format = PIXFORMAT_RGB565; // for face detection/recognition
