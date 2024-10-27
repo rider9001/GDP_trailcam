@@ -42,12 +42,18 @@ const char *password = "N4UKHvBAuMaI";
 void startCameraServer();
 void setupLedFlash(int pin);
 
-#define LED_GPIO_NUM 13
+#define BOARD_HAS_PSRAM
+
+#define INPUT_PIN 36
+#define OUTPUT_PIN 35
 
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
+
+  pinMode(OUTPUT_PIN, OUTPUT);
+  pinMode(INPUT_PIN, INPUT);
 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;

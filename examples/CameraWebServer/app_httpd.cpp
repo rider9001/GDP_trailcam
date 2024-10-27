@@ -74,7 +74,7 @@
 #endif
 
 // Enable LED FLASH setting
-#define CONFIG_LED_ILLUMINATOR_ENABLED 1
+#define CONFIG_LED_ILLUMINATOR_ENABLED 0
 
 // LED FLASH setup
 #if CONFIG_LED_ILLUMINATOR_ENABLED
@@ -771,6 +771,9 @@ static esp_err_t cmd_handler(httpd_req_t *req) {
   if (parse_get(req, &buf) != ESP_OK) {
     return ESP_FAIL;
   }
+
+  log_i("Req: %s", buf);
+  
   if (httpd_query_key_value(buf, "var", variable, sizeof(variable)) != ESP_OK || httpd_query_key_value(buf, "val", value, sizeof(value)) != ESP_OK) {
     free(buf);
     httpd_resp_send_404(req);
