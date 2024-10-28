@@ -1225,18 +1225,18 @@ void startCameraServer() {
 #endif
   };
 
-  httpd_uri_t xclk_uri = {
-    .uri = "/xclk",
-    .method = HTTP_GET,
-    .handler = xclk_handler,
-    .user_ctx = NULL
-#ifdef CONFIG_HTTPD_WS_SUPPORT
-    ,
-    .is_websocket = true,
-    .handle_ws_control_frames = false,
-    .supported_subprotocol = NULL
-#endif
-  };
+   httpd_uri_t xclk_uri = {
+     .uri = "/xclk",
+     .method = HTTP_GET,
+     .handler = xclk_handler,
+     .user_ctx = NULL
+ #ifdef CONFIG_HTTPD_WS_SUPPORT
+     ,
+     .is_websocket = true,
+     .handle_ws_control_frames = false,
+     .supported_subprotocol = NULL
+ #endif
+   };
 
   httpd_uri_t reg_uri = {
     .uri = "/reg",
