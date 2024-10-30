@@ -127,12 +127,12 @@ void app_main(void)
     print_dir_content_in_info_SDSPI(MOUNT_POINT);
 
     char filename[FILENAME_MAX_SIZE];
-    const size_t filenum = 0;
+    const size_t filenum = 3;
     get_filenm_in_dir_SDSPI(MOUNT_POINT, filenum, filename);
 
     if (filename[0] == '\0')
     {
-        ESP_LOGE(MAIN_TAG, "No file %u in dir %s", filenum, MOUNT_POINT);
+        ESP_LOGE(MAIN_TAG, "No file number %u in dir %s", filenum, MOUNT_POINT);
     }
     else
     {

@@ -242,7 +242,7 @@ void get_filenm_in_dir_SDSPI(const char* path, const size_t dir_num, char* name_
     size_t num = 0;
     while((entry = readdir(dir)) != NULL)
     {
-        // strcmp returns 0 on equal
+        // Filter "." and "..", strcmp returns 0 on equal
         bool not_filelinks = strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0;
         if (num == dir_num && not_filelinks)
         {
@@ -250,7 +250,6 @@ void get_filenm_in_dir_SDSPI(const char* path, const size_t dir_num, char* name_
             break;
         }
 
-        // Filter "." and ".."
         if (not_filelinks)
         {
             num++;
