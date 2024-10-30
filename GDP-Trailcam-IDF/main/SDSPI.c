@@ -166,7 +166,7 @@ esp_err_t read_text_SDSPI(const char* path, char* out_text, const size_t len)
 }
 
 ///--------------------------------------------------------
-long fsize(const char* path)
+long fsize_SDSPI(const char* path)
 {
     struct stat sb;
 
@@ -177,4 +177,117 @@ long fsize(const char* path)
         ESP_LOGE(SDSPI_TAG, "Failed to stat %s", path);
         return -1;
     }
+}
+
+///--------------------------------------------------------
+bool check_dir_SDSPI(const char* path)
+{
+    ESP_LOGI(SDSPI_TAG, "Checking existence of dir %s", path);
+    DIR* dir = opendir(path);
+    bool readable = dir != NULL;
+    closedir(dir);
+
+    if (readable)
+    {
+        ESP_LOGI(SDSPI_TAG, "Directory exists and can be opened");
+    }
+    else
+    {
+        ESP_LOGW(SDSPI_TAG, "Directory cannot be opened");
+    }
+
+    return readable;
+}
+
+///--------------------------------------------------------
+esp_err_t create_dir_SDSPI(const char* path)
+{
+    ESP_LOGI(SDSPI_TAG, "Creating directory %s", path);
+    errno = 0;
+    if (mkdir(path, S_IRWXU) == 0)
+    {
+        ESP_LOGI(SDSPI_TAG, "Directory created sucsessfully");
+        return ESP_OK;
+    }
+    else
+    {
+        if(errno == EEXIST)
+        {
+            ESP_LOGE(SDSPI_TAG, "Directory already exists");
+            return ESP_ERR_INVALID_ARG;
+        }
+        else
+        {
+            ESP_LOGE(SDSPI_TAG, "Failed to create directory, errno: %i", errno);
+            return ESP_FAIL;
+        }
+    }
+}
+
+///--------------------------------------------------------
+void get_filenm_in_dir_SDSPI(const char* path, const size_t dir_num, char* name_out)
+{
+    ESP_LOGI(SDSPI_TAG, "Getting file %u from dir %s", dir_num, path);
+
+    DIR* dir = opendir(path);
+    if (dir == NULL)
+    {
+        ESP_LOGE(SDSPI_TAG, "Failed to open directory");
+        name_out = NULL;
+        return;
+    }
+
+    struct dirent* entry;
+    struct dirent* nth_entry = NULL;
+    size_t num = 0;
+    while((entry = readdir(dir)) != NULL)
+    {
+        // strcmp returns 0 on equal
+        bool not_filelinks = strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0;
+        if (num == dir_num && not_filelinks)
+        {
+            nth_entry = entry;
+            break;
+        }
+
+        // Filter "." and ".."
+        if (not_filelinks)
+        {
+            num++;
+        }
+    }
+
+    closedir(dir);
+    if (nth_entry == NULL)
+    {
+        ESP_LOGI(SDSPI_TAG, "File %u not found", dir_num);
+        name_out = NULL;
+    }
+    else
+    {
+        ESP_LOGI(SDSPI_TAG, "File %u found: %s", dir_num, nth_entry->d_name);
+        strcpy(name_out, nth_entry->d_name);
+    }
+}
+
+///--------------------------------------------------------
+void print_dir_content_in_info_SDSPI(const char* path)
+{
+    ESP_LOGI(SDSPI_TAG, "Reading dir contents %s", path);
+
+    DIR* dir = opendir(path);
+    if (dir == NULL)
+    {
+        ESP_LOGE(SDSPI_TAG, "Failed to open directory");
+        return;
+    }
+
+    struct dirent* entry;
+    size_t count = 0;
+    while((entry = readdir(dir)) != NULL)
+    {
+        ESP_LOGI(SDSPI_TAG, "%u: %s", count++, entry->d_name);
+    }
+
+    closedir(dir);
 }

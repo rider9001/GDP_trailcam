@@ -17,6 +17,7 @@ SDSPI_connection_t connection;
 void app_main(void)
 {
     long size;
+    esp_err_t err;
     ESP_LOGI(MAIN_TAG, "Starting SDSPI comms.");
 
     connection = connect_to_SDSPI(PIN_NUM_MISO, PIN_NUM_MOSI, PIN_NUM_CLK, PIN_NUM_CS);
@@ -51,7 +52,7 @@ void app_main(void)
         ESP_LOGI(MAIN_TAG, "Read string is: %s", text_out);
     }
 
-    size = fsize(text_file);
+    size = fsize_SDSPI(text_file);
     if (size == -1)
     {
         ESP_LOGE(MAIN_TAG, "Failed to read text SDSPI size");
@@ -98,7 +99,7 @@ void app_main(void)
         ESP_LOGE(MAIN_TAG, "Data mismatch!");
     }
 
-    size = fsize(file);
+    size = fsize_SDSPI(file);
     if (size == -1)
     {
         ESP_LOGE(MAIN_TAG, "Failed to read SDSPI size");
@@ -106,6 +107,36 @@ void app_main(void)
     else
     {
         ESP_LOGI(MAIN_TAG, "Data size: %ld bytes", size);
+    }
+
+    const char* dir = MOUNT_POINT"/testdir";
+    const char* dirlvl2 = MOUNT_POINT"/testdir/lvl2";
+
+    ESP_LOGI(MAIN_TAG, "Creating dir %s", dir);
+    if ((err = create_dir_SDSPI(dir)) != ESP_OK)
+    {
+        ESP_LOGE(MAIN_TAG, "Failed to create dir, err: %s", esp_err_to_name(err));
+    }
+
+    ESP_LOGI(MAIN_TAG, "Creating dir %s", dirlvl2);
+    if ((err = create_dir_SDSPI(dirlvl2)) != ESP_OK)
+    {
+        ESP_LOGE(MAIN_TAG, "Failed to create dir, err: %s", esp_err_to_name(err));
+    }
+
+    print_dir_content_in_info_SDSPI(MOUNT_POINT);
+
+    char filename[FILENAME_MAX_SIZE];
+    const size_t filenum = 0;
+    get_filenm_in_dir_SDSPI(MOUNT_POINT, filenum, filename);
+
+    if (filename[0] == '\0')
+    {
+        ESP_LOGE(MAIN_TAG, "No file %u in dir %s", filenum, MOUNT_POINT);
+    }
+    else
+    {
+        ESP_LOGI(MAIN_TAG, "File number %u name: %s", filenum, filename);
     }
 
     close_SDSPI_connection(connection);

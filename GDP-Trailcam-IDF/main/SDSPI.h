@@ -11,16 +11,29 @@
 #include <stdio.h>
 #include <sys/unistd.h>
 #include <sys/stat.h>
+#include <errno.h>
+#include <dirent.h>
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
 #include "esp_mac.h"
 
+/// @brief MISO pin definition
 #define PIN_NUM_MISO  CONFIG_EXAMPLE_PIN_MISO
+
+/// @brief MOSI pin definition
 #define PIN_NUM_MOSI  CONFIG_EXAMPLE_PIN_MOSI
+
+/// @brief SCLK pin definition
 #define PIN_NUM_CLK   CONFIG_EXAMPLE_PIN_CLK
+
+/// @brief CS pin definition
 #define PIN_NUM_CS    CONFIG_EXAMPLE_PIN_CS
 
+/// @brief Mount point for the sdcard, must be prefixed to all filepaths
 #define MOUNT_POINT "/sdcard"
+
+/// @brief Max length allowed for a filename under unix
+#define FILENAME_MAX_SIZE 256
 
 /// @brief Stores the needed comms info for a SDSPI reader connection
 /// Card should be considered the active indicator,
@@ -106,4 +119,39 @@ esp_err_t read_text_SDSPI(const char* path, char* out_text, const size_t len);
 /// @param path to file to read size from, root is '/sdcard'
 ///
 /// @return size in bytes, read fail will return negative
-long fsize(const char* path);
+long fsize_SDSPI(const char* path);
+
+///--------------------------------------------------------
+/// @brief Checks the existence of the directory in path
+///
+/// @param path to check
+///
+/// @return true if dir exists and is readable, false if not
+bool check_dir_SDSPI(const char* path);
+
+///--------------------------------------------------------
+/// @brief Creates directory at the specified path
+///
+/// @note Can only create directories one level at a time
+///
+/// @param path to create new directory at
+///
+/// @return ESP_OK if sucsessful, ESP_ERR_INVALID_ARG if directory already exists, ESP_FAIL if creation fails
+esp_err_t create_dir_SDSPI(const char* path);
+
+///--------------------------------------------------------
+/// @brief Get the name of the nth file in a directory
+/// Returns null if there is no nth file, count starts at 0
+///
+/// @note "." and ".." are filtered and are not counted when finding nth file
+///
+/// @param path to the directory
+/// @param dir_num the number of the file to find
+/// @param name_out output ptr to place the name into, should be sized to FILENAME_MAX_SIZE
+void get_filenm_in_dir_SDSPI(const char* path, const size_t dir_num, char* name_out);
+
+///--------------------------------------------------------
+/// @brief Prints the contents of a dir in info logs
+///
+/// @param path to print contents
+void print_dir_content_in_info_SDSPI(const char* path);
