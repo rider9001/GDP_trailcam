@@ -1,0 +1,14 @@
+menu "SD SPI Configuration"
+
+    config EXAMPLE_PIN_MOSI
+        int "MOSI GPIO number"
+
+    config EXAMPLE_PIN_MISO
+        int "MISO GPIO number"
+
+    config EXAMPLE_PIN_CLK
+        int "CLK GPIO number"
+
+    config EXAMPLE_PIN_CS
+        int "CS GPIO number"
+endmenu
