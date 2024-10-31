@@ -1,14 +1,71 @@
 menu "SD SPI Configuration"
 
-    config EXAMPLE_PIN_MOSI
+    config PIN_SPI_MOSI
         int "MOSI GPIO number"
 
-    config EXAMPLE_PIN_MISO
+    config PIN_SPI_MISO
         int "MISO GPIO number"
 
-    config EXAMPLE_PIN_CLK
+    config PIN_SPI_CLK
         int "CLK GPIO number"
 
-    config EXAMPLE_PIN_CS
+    config PIN_SPI_CS
         int "CS GPIO number"
+endmenu
+
+menu "Camera Configuration"
+
+    config PIN_CAM_PWRDN
+        int "Camera powerdown pin number (-1 for unused)"
+
+    config PIN_CAM_RESET
+        int "Camera reset pin number (-1 for unused)"
+
+    config PIN_CAM_XCLK
+        int "Camera external clock pin number (required)"
+
+    config PIN_CAM_XCLK_FREQ
+        int "XCLK frequency (Hz)"
+        default 8000000
+        help
+            8MHz has been found to be the most stable freq for the OV5640
+
+    config PIN_CAM_I2C_SDA
+        int "Camera I2C serial data pin number (required)"
+
+    config PIN_CAM_I2C_SCL
+        int "Camera I2C serial clock pin number (required)"
+
+    config PIN_CAM_D2
+        int "Camera pixel data pin 2/0 (required)"
+
+    config PIN_CAM_D3
+        int "Camera pixel data pin 3/1 (required)"
+
+    config PIN_CAM_D4
+        int "Camera pixel data pin 4/2 (required)"
+
+    config PIN_CAM_D5
+        int "Camera pixel data pin 5/3 (required)"
+
+    config PIN_CAM_D6
+        int "Camera pixel data pin 6/4 (required)"
+
+    config PIN_CAM_D7
+        int "Camera pixel data pin 7/5 (required)"
+
+    config PIN_CAM_D8
+        int "Camera pixel data pin 8/6 (required)"
+
+    config PIN_CAM_D9
+        int "Camera pixel data pin 9/7 (required)"
+
+    config PIN_CAM_VSYNC
+        int "Camera vsync pin (required)"
+
+    config PIN_CAM_HREF
+        int "Camera href pin (required)"
+
+    config PIN_CAM_PCLK
+        int "Camera pixel clock pin (required)"
 endmenu

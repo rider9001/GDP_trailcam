@@ -18,16 +18,16 @@
 #include "esp_mac.h"
 
 /// @brief MISO pin definition
-#define PIN_NUM_MISO  CONFIG_EXAMPLE_PIN_MISO
+#define PIN_NUM_MISO  CONFIG_PIN_SPI_MISO
 
 /// @brief MOSI pin definition
-#define PIN_NUM_MOSI  CONFIG_EXAMPLE_PIN_MOSI
+#define PIN_NUM_MOSI  CONFIG_PIN_SPI_MOSI
 
 /// @brief SCLK pin definition
-#define PIN_NUM_CLK   CONFIG_EXAMPLE_PIN_CLK
+#define PIN_NUM_CLK   CONFIG_PIN_SPI_CLK
 
 /// @brief CS pin definition
-#define PIN_NUM_CS    CONFIG_EXAMPLE_PIN_CS
+#define PIN_NUM_CS    CONFIG_PIN_SPI_CS
 
 /// @brief Mount point for the sdcard, must be prefixed to all filepaths
 #define MOUNT_POINT "/sdcard"
