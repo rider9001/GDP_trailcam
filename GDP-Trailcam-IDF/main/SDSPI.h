@@ -16,6 +16,7 @@
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
 #include "esp_mac.h"
+#include "esp_log.h"
 
 /// @brief MISO pin definition
 #define PIN_NUM_MISO  CONFIG_PIN_SPI_MISO
@@ -149,6 +150,14 @@ esp_err_t create_dir_SDSPI(const char* path);
 /// @param dir_num the number of the file to find
 /// @param name_out output ptr to place the name into, should be sized to FILENAME_MAX_SIZE
 void get_filenm_in_dir_SDSPI(const char* path, const size_t dir_num, char* name_out);
+
+///--------------------------------------------------------
+/// @brief Check if a file exists
+///
+/// @param path to the file
+///
+/// @return does the file exist in this path?
+bool check_file_SDSPI(const char* path);
 
 ///--------------------------------------------------------
 /// @brief Prints the contents of a dir in info logs

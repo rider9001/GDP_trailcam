@@ -25,8 +25,8 @@ menu "Camera Configuration"
         int "Camera external clock pin number (required)"
 
     config PIN_CAM_XCLK_FREQ
-        int "XCLK frequency (Hz)"
-        default 8000000
+        int "XCLK frequency (MHz)"
+        default 8
         help
             8MHz has been found to be the most stable freq for the OV5640
 

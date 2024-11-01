@@ -356,7 +356,8 @@ esp_err_t esp_camera_deinit()
     return ret;
 }
 
-#define FB_GET_TIMEOUT (4000 / portTICK_PERIOD_MS)
+// 5 sec max to pull a frame off the camera
+#define FB_GET_TIMEOUT (5000 / portTICK_PERIOD_MS)
 
 camera_fb_t *esp_camera_fb_get()
 {

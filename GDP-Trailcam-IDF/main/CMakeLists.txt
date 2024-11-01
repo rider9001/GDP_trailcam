@@ -1,4 +1,8 @@
-set(srcs "main.c" "SDSPI.c")
+set(srcs
+    "main.c"
+    "SDSPI.c"
+    "Camera.c"
+    )
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS "."

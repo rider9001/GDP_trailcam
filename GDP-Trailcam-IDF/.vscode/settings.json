@@ -20,7 +20,12 @@
         "string": "c",
         "string_view": "c",
         "span": "c",
-        "sd_pwr_ctrl_by_on_chip_ldo.h": "c"
+        "sd_pwr_ctrl_by_on_chip_ldo.h": "c",
+        "ll_cam.h": "c",
+        "esp_heap_caps.h": "c",
+        "stdlib.h": "c",
+        "*.tcc": "cpp",
+        "format": "cpp"
     },
     "idf.flashType": "UART"
 }

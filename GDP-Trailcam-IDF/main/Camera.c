@@ -38,7 +38,7 @@ camera_config_t get_default_camera_config()
         .pin_pclk       = CONFIG_PIN_CAM_PCLK,
 
         // Clock freq used by camera, 8MHz tested to be best, except for images above FHD resolution
-        .xclk_freq_hz   = CONFIG_PIN_CAM_XCLK_FREQ,
+        .xclk_freq_hz   = CONFIG_PIN_CAM_XCLK_FREQ * 1000000,
 
         // LEDC timers used to gen camera clock signal, unused here but should be filled with
         // these enums to prevent compiler complaining
@@ -47,10 +47,10 @@ camera_config_t get_default_camera_config()
 
         // Format and framesize settings, not sure if jpeg quality has any effect outside of JPEG mode
         .pixel_format   = PIXFORMAT_JPEG,
-        .frame_size     = FRAMESIZE_HD,
+        .frame_size     = FRAMESIZE_QSXGA,
         .jpeg_quality   = 5,
 
-        .fb_count       = 2,
+        .fb_count       = 1,
 
         .fb_location    = CAMERA_FB_IN_PSRAM,
         /* 'When buffers should be filled' <- Not sure what this means */
@@ -63,6 +63,7 @@ camera_config_t get_default_camera_config()
 /// ------------------------------------------
 esp_err_t start_camera(const camera_config_t cam_config)
 {
+    ESP_LOGI(CAM_TAG, "Initialising camera");
     esp_err_t err = esp_camera_init(&cam_config);
     if (err != ESP_OK)
     {
@@ -72,4 +73,71 @@ esp_err_t start_camera(const camera_config_t cam_config)
 
     ESP_LOGI(CAM_TAG, "Camera Init Success");
     return ESP_OK;
+}
+
+/// ------------------------------------------
+esp_err_t stop_camera()
+{
+    ESP_LOGI(CAM_TAG, "De-initialising camera");
+    esp_err_t err = esp_camera_deinit();
+    if (err != ESP_OK)
+    {
+        if (err == ESP_ERR_INVALID_STATE)
+        {
+            ESP_LOGE(CAM_TAG, "Camera never initialized");
+            return ESP_ERR_INVALID_STATE;
+        }
+        else
+        {
+            ESP_LOGE(CAM_TAG, "Unexpected error: %s", esp_err_to_name(err));
+            return err;
+        }
+    }
+    else
+    {
+        ESP_LOGI(CAM_TAG, "Camera De-init Success");
+        return ESP_OK;
+    }
+}
+
+/// ------------------------------------------
+esp_err_t write_fb_to_SD(const camera_fb_t* fb, const char* save_path)
+{
+    return write_data_SDSPI(save_path, fb->buf, fb->len);
+}
+
+/// ------------------------------------------
+void default_camera_settings()
+{
+    sensor_t* s = esp_camera_sensor_get();
+    if (s == NULL)
+    {
+        ESP_LOGE(CAM_TAG, "Failed to grab sensor ptr");
+        return;
+    }
+
+    s->set_brightness(s, 0);     // -2 to 2
+    s->set_contrast(s, 0);       // -2 to 2
+    s->set_saturation(s, 0);     // -2 to 2
+    s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
+    s->set_whitebal(s, 1);       // 0 = disable , 1 = enable
+    s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
+    s->set_wb_mode(s, 0);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+    s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
+    s->set_aec2(s, 0);           // 0 = disable , 1 = enable
+    s->set_ae_level(s, 0);       // -2 to 2
+    s->set_aec_value(s, 300);    // 0 to 1200
+    s->set_gain_ctrl(s, 1);      // 0 = disable , 1 = enable
+    s->set_agc_gain(s, 0);       // 0 to 30
+    s->set_gainceiling(s, (gainceiling_t)0);  // 0 to 6
+    s->set_bpc(s, 0);            // 0 = disable , 1 = enable
+    s->set_wpc(s, 1);            // 0 = disable , 1 = enable
+    s->set_raw_gma(s, 1);        // 0 = disable , 1 = enable
+    s->set_lenc(s, 1);           // 0 = disable , 1 = enable
+    s->set_hmirror(s, 0);        // 0 = disable , 1 = enable
+    s->set_vflip(s, 0);          // 0 = disable , 1 = enable
+    s->set_dcw(s, 1);            // 0 = disable , 1 = enable
+    s->set_colorbar(s, 0);       // 0 = disable , 1 = enable
+
+    ESP_LOGI(CAM_TAG, "Defaulted camera settings");
 }

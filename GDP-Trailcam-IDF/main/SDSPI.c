@@ -27,6 +27,11 @@ SDSPI_connection_t connect_to_SDSPI(const int miso,
     ESP_LOGI(SDSPI_TAG, "Using SPI peripheral");
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
 
+    gpio_set_pull_mode(mosi, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(miso, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(sclk, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(cs, GPIO_PULLUP_ONLY);
+
     spi_bus_config_t bus_cfg = {
         .mosi_io_num = mosi,
         .miso_io_num = miso,
@@ -98,7 +103,7 @@ esp_err_t write_data_SDSPI(const char* path, const uint8_t* data, const size_t l
     ESP_LOGI(SDSPI_TAG, "Opening file %s", path);
     FILE *f = fopen(path, "wb");
     if (f == NULL) {
-        ESP_LOGE(SDSPI_TAG, "Failed to open file for writing");
+        ESP_LOGE(SDSPI_TAG, "Failed to open file for writing, errno: %d", errno);
         return ESP_FAIL;
     }
 
@@ -116,7 +121,7 @@ esp_err_t write_text_SDSPI(const char* path, const char* text)
     // Append file if existing, create if not
     FILE *f = fopen(path, "a");
     if (f == NULL) {
-        ESP_LOGE(SDSPI_TAG, "Failed to open file for writing");
+        ESP_LOGE(SDSPI_TAG, "Failed to open file for writing, errno: %d", errno);
         return ESP_FAIL;
     }
 
@@ -133,7 +138,7 @@ esp_err_t read_data_SDSPI(const char* path, uint8_t* out_buf, const size_t len)
     ESP_LOGI(SDSPI_TAG, "Opening file %s", path);
     FILE *f = fopen(path, "r");
     if (f == NULL) {
-        ESP_LOGE(SDSPI_TAG, "Failed to open file for reading");
+        ESP_LOGE(SDSPI_TAG, "Failed to open file for reading, errno: %d", errno);
         return ESP_FAIL;
     }
 
@@ -150,7 +155,7 @@ esp_err_t read_text_SDSPI(const char* path, char* out_text, const size_t len)
     ESP_LOGI(SDSPI_TAG, "Opening file %s", path);
     FILE *f = fopen(path, "r");
     if (f == NULL) {
-        ESP_LOGE(SDSPI_TAG, "Failed to open file for reading");
+        ESP_LOGE(SDSPI_TAG, "Failed to open file for reading, errno: %d", errno);
         return ESP_FAIL;
     }
 
@@ -232,7 +237,7 @@ void get_filenm_in_dir_SDSPI(const char* path, const size_t dir_num, char* name_
     DIR* dir = opendir(path);
     if (dir == NULL)
     {
-        ESP_LOGE(SDSPI_TAG, "Failed to open directory");
+        ESP_LOGE(SDSPI_TAG, "Failed to open directory, errno: %d", errno);
         name_out = NULL;
         return;
     }
@@ -277,7 +282,7 @@ void print_dir_content_in_info_SDSPI(const char* path)
     DIR* dir = opendir(path);
     if (dir == NULL)
     {
-        ESP_LOGE(SDSPI_TAG, "Failed to open directory");
+        ESP_LOGE(SDSPI_TAG, "Failed to open directory, errno: %d", errno);
         return;
     }
 
@@ -289,4 +294,21 @@ void print_dir_content_in_info_SDSPI(const char* path)
     }
 
     closedir(dir);
+}
+
+///--------------------------------------------------------
+bool check_file_SDSPI(const char* path)
+{
+    ESP_LOGI(SDSPI_TAG, "Checking %s", path);
+
+    FILE* f = fopen(path, "r");
+    if (f == NULL)
+    {
+        ESP_LOGW(SDSPI_TAG, "Failed to open %s, errno: %d", path, errno);
+        return false;
+    }
+
+    ESP_LOGI(SDSPI_TAG, "Found %s", path);
+    fclose(f);
+    return true;
 }
