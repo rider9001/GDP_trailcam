@@ -4,6 +4,9 @@
 /// @brief Main source of the GDP trailcam project
 /// ------------------------------------------
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/timers.h"
+
 #include "SDSPI.h"
 #include "Camera.h"
 
@@ -11,9 +14,13 @@ static const char *MAIN_TAG = "main";
 
 SDSPI_connection_t connection;
 
+const uint32_t cam_pwr_pin = CONFIG_PIN_CAM_PWRDN;
+
 void app_main(void)
 {
-    camera_config_t config = get_default_camera_config();
+    // This should always be run first, sets all power down pins as outputs and shuts down all cameras
+    setup_all_cam_power_down_pins();
+    camera_config_t config = get_default_camera_config(cam_pwr_pin);
 
     ESP_LOGI(MAIN_TAG, "Starting camera");
     if (start_camera(config) != ESP_OK)
@@ -22,7 +29,18 @@ void app_main(void)
         return;
     }
 
-    default_camera_settings();
+    ESP_LOGI(MAIN_TAG, "Testing powerdown");
+
+    stop_camera(config);
+    ESP_LOGI(MAIN_TAG, "Waiting 5 seconds...");
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    ESP_LOGI(MAIN_TAG, "Restarting camera");
+
+    if (start_camera(config) != ESP_OK)
+    {
+        ESP_LOGE(MAIN_TAG, "Failed to start Camera");
+        return;
+    }
 
     ESP_LOGI(MAIN_TAG, "Grabbing frame buffer");
     camera_fb_t* fb = esp_camera_fb_get();
@@ -53,7 +71,7 @@ void app_main(void)
     esp_camera_fb_return(fb);
 
     ESP_LOGI(MAIN_TAG, "Stopping camera");
-    if (stop_camera() != ESP_OK)
+    if (stop_camera(config) != ESP_OK)
     {
         ESP_LOGE(MAIN_TAG, "Failed to stop camera");
     }

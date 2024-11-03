@@ -6,13 +6,11 @@
 
 #include "Camera.h"
 
-static const char *CAM_TAG = "Camera";
-
 /// ------------------------------------------
-camera_config_t get_default_camera_config()
+camera_config_t get_default_camera_config(const uint32_t power_down_pin)
 {
     camera_config_t camera_default_config = {
-        .pin_pwdn       = CONFIG_PIN_CAM_PWRDN,
+        .pin_pwdn       = power_down_pin,
         .pin_reset      = CONFIG_PIN_CAM_RESET,
         // If pin < 0 then clock is disabled
         .pin_xclk       = CONFIG_PIN_CAM_XCLK,
@@ -63,6 +61,12 @@ camera_config_t get_default_camera_config()
 /// ------------------------------------------
 esp_err_t start_camera(const camera_config_t cam_config)
 {
+    ESP_LOGI(CAM_TAG, "Powering up camera");
+    gpio_set_level(cam_config.pin_pwdn, CAM_POWER_ON);
+
+    // Must wait whilst the camera goes through powerup sequence
+    vTaskDelay(pdMS_TO_TICKS(CAM_WAKEUP_DELAY_MS));
+
     ESP_LOGI(CAM_TAG, "Initialising camera");
     esp_err_t err = esp_camera_init(&cam_config);
     if (err != ESP_OK)
@@ -76,7 +80,7 @@ esp_err_t start_camera(const camera_config_t cam_config)
 }
 
 /// ------------------------------------------
-esp_err_t stop_camera()
+esp_err_t stop_camera(const camera_config_t cam_config)
 {
     ESP_LOGI(CAM_TAG, "De-initialising camera");
     esp_err_t err = esp_camera_deinit();
@@ -85,19 +89,21 @@ esp_err_t stop_camera()
         if (err == ESP_ERR_INVALID_STATE)
         {
             ESP_LOGE(CAM_TAG, "Camera never initialized");
-            return ESP_ERR_INVALID_STATE;
         }
         else
         {
             ESP_LOGE(CAM_TAG, "Unexpected error: %s", esp_err_to_name(err));
-            return err;
         }
     }
     else
     {
         ESP_LOGI(CAM_TAG, "Camera De-init Success");
-        return ESP_OK;
     }
+
+    ESP_LOGI(CAM_TAG, "Powering down camera");
+    gpio_set_level(cam_config.pin_pwdn, CAM_POWER_OFF);
+
+    return err;
 }
 
 /// ------------------------------------------
@@ -122,7 +128,7 @@ void default_camera_settings()
     s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
     s->set_whitebal(s, 1);       // 0 = disable , 1 = enable
     s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
-    s->set_wb_mode(s, 0);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+    s->set_wb_mode(s, 4);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
     s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
     s->set_aec2(s, 0);           // 0 = disable , 1 = enable
     s->set_ae_level(s, 0);       // -2 to 2
@@ -140,4 +146,15 @@ void default_camera_settings()
     s->set_colorbar(s, 0);       // 0 = disable , 1 = enable
 
     ESP_LOGI(CAM_TAG, "Defaulted camera settings");
+}
+
+/// ------------------------------------------
+void setup_all_cam_power_down_pins()
+{
+    for (size_t i = 0; i < sizeof(cam_power_down_pins) / sizeof(cam_power_down_pins[0]); i++)
+    {
+        esp_rom_gpio_pad_select_gpio(cam_power_down_pins[i]);
+        gpio_set_direction(cam_power_down_pins[i], GPIO_MODE_OUTPUT);
+        gpio_set_level(cam_power_down_pins[i], CAM_POWER_OFF);
+    }
 }

@@ -1,0 +1,11 @@
+# Pin count planning for the S3 GPIO #
+
+Feather S3 GPIO total: 22
+
+Camera pins needed: 17 (+1 for each camera controlled via PWR_DWN pin)
+
+SD SPI pins needed: 4
+
+IR illumator: 1
+
+Photoresistor sensor: 1

@@ -19,7 +19,7 @@ menu "Camera Configuration"
         int "Camera powerdown pin number (-1 for unused)"
 
     config PIN_CAM_RESET
-        int "Camera reset pin number (-1 for unused)"
+        int "Camera reset pin number (required)"
 
     config PIN_CAM_XCLK
         int "Camera external clock pin number (required)"

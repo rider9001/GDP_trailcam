@@ -25,7 +25,8 @@
         "esp_heap_caps.h": "c",
         "stdlib.h": "c",
         "*.tcc": "cpp",
-        "format": "cpp"
+        "format": "cpp",
+        "random": "c"
     },
     "idf.flashType": "UART"
 }
