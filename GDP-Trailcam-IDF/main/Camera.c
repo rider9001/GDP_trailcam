@@ -107,13 +107,24 @@ esp_err_t stop_camera(const camera_config_t cam_config)
 }
 
 /// ------------------------------------------
+image_data_t extract_camera_buffer(const camera_fb_t* fb)
+{
+    image_data_t img_data;
+    img_data.buf = (uint8_t*) malloc(fb->len);
+    memcpy(img_data.buf, fb->buf, fb->len);
+    img_data.len = fb->len;
+
+    return img_data;
+}
+
+/// ------------------------------------------
 esp_err_t write_fb_to_SD(const camera_fb_t* fb, const char* save_path)
 {
     return write_data_SDSPI(save_path, fb->buf, fb->len);
 }
 
 /// ------------------------------------------
-void default_camera_settings()
+void default_frame_settings()
 {
     sensor_t* s = esp_camera_sensor_get();
     if (s == NULL)
@@ -128,7 +139,7 @@ void default_camera_settings()
     s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
     s->set_whitebal(s, 1);       // 0 = disable , 1 = enable
     s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
-    s->set_wb_mode(s, 4);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+    s->set_wb_mode(s, 2);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
     s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
     s->set_aec2(s, 0);           // 0 = disable , 1 = enable
     s->set_ae_level(s, 0);       // -2 to 2
@@ -151,8 +162,15 @@ void default_camera_settings()
 /// ------------------------------------------
 void setup_all_cam_power_down_pins()
 {
-    for (size_t i = 0; i < sizeof(cam_power_down_pins) / sizeof(cam_power_down_pins[0]); i++)
+    size_t cam_list_sz = sizeof(cam_power_down_pins) / sizeof(cam_power_down_pins[0]);
+    for (size_t i = 0; i < cam_list_sz; i++)
     {
+        if (cam_power_down_pins[i] < 0)
+        {
+            ESP_LOGW(CAM_TAG, "Camera %i PWR_DWN is -1, no connection made", i+1);
+            continue;
+        }
+
         esp_rom_gpio_pad_select_gpio(cam_power_down_pins[i]);
         gpio_set_direction(cam_power_down_pins[i], GPIO_MODE_OUTPUT);
         gpio_set_level(cam_power_down_pins[i], CAM_POWER_OFF);

@@ -15,8 +15,17 @@ endmenu
 
 menu "Camera Configuration"
 
-    config PIN_CAM_PWRDN
-        int "Camera powerdown pin number (-1 for unused)"
+    config PIN_CAM_PWRDN_1
+        int "Camera powerdown pin number (-1 for unused) for camera 1"
+
+    config PIN_CAM_PWRDN_2
+        int "Camera powerdown pin number (-1 for unused) for camera 2"
+
+    config PIN_CAM_PWRDN_3
+        int "Camera powerdown pin number (-1 for unused) for camera 3"
+
+    config PIN_CAM_PWRDN_4
+        int "Camera powerdown pin number (-1 for unused) for camera 4"
 
     config PIN_CAM_RESET
         int "Camera reset pin number (required)"
