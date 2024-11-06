@@ -45,7 +45,7 @@ camera_config_t get_default_camera_config(const uint32_t power_down_pin)
 
         // Format and framesize settings, not sure if jpeg quality has any effect outside of JPEG mode
         .pixel_format   = PIXFORMAT_JPEG,
-        .frame_size     = FRAMESIZE_QSXGA,
+        .frame_size     = FRAMESIZE_QHD,
         .jpeg_quality   = 5,
 
         .fb_count       = 1,
@@ -56,6 +56,75 @@ camera_config_t get_default_camera_config(const uint32_t power_down_pin)
     };
 
     return camera_default_config;
+}
+
+/// ------------------------------------------
+esp_err_t cam_POST(const camera_config_t config)
+{
+    ESP_LOGI(CAM_TAG, "POSTing cam for pin %i", config.pin_pwdn);
+    // Start the tested camera
+    if (start_camera(config) != ESP_OK)
+    {
+        ESP_LOGE(CAM_TAG, "Camera startup for pwr_dwn pin %i failed", config.pin_pwdn);
+        return ESP_FAIL;
+    }
+
+    // Wait 5 seconds to allow the camera to exit any anomalous state
+    vTaskDelay(pdMS_TO_TICKS(5000));
+
+    // Setup frame settings
+    default_frame_settings();
+
+    // Take an image
+    ESP_LOGI(CAM_TAG, "Grabbing frame buffer");
+    camera_fb_t* fb = esp_camera_fb_get();
+    if (!fb) {
+        ESP_LOGE(CAM_TAG, "Frame buffer could not be acquired");
+        stop_camera(config);
+        return ESP_FAIL;
+    }
+    ESP_LOGI(CAM_TAG, "Camera buffer grabbed sucsessfully");
+    ESP_LOGI(CAM_TAG, "Image is %u bytes", fb->len);
+
+    // check image buffer is non empty
+    if (fb->len == 0)
+    {
+        stop_camera(config);
+        ESP_LOGE(CAM_TAG, "Frame buffer zero length");
+        return ESP_FAIL;
+    }
+
+    // Return camera buffer
+    esp_camera_fb_return(fb);
+
+    ESP_LOGI(CAM_TAG, "Stopping camera");
+    if (stop_camera(config) != ESP_OK)
+    {
+        ESP_LOGE(CAM_TAG, "Failed to stop camera");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(CAM_TAG, "Camera POST for pwr_dwn pin %i sucsess", config.pin_pwdn);
+    return ESP_OK;
+}
+
+/// ------------------------------------------
+esp_err_t POST_all_cams()
+{
+    size_t cam_list_sz = sizeof(cam_power_down_pins) / sizeof(cam_power_down_pins[0]);
+    for (size_t i = 0; i <  cam_list_sz; i++)
+    {
+        if (!(cam_power_down_pins[i] < 0))
+        {
+            camera_config_t config = get_default_camera_config(cam_power_down_pins[i]);
+            if (cam_POST(config) != ESP_OK)
+            {
+                return ESP_FAIL;
+            }
+        }
+    }
+
+    return ESP_OK;
 }
 
 /// ------------------------------------------
@@ -133,11 +202,11 @@ void default_frame_settings()
         return;
     }
 
-    s->set_brightness(s, 0);     // -2 to 2
+    s->set_brightness(s, 1);     // -2 to 2
     s->set_contrast(s, 0);       // -2 to 2
     s->set_saturation(s, 0);     // -2 to 2
     s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
-    s->set_whitebal(s, 1);       // 0 = disable , 1 = enable
+    s->set_whitebal(s, 0);       // 0 = disable , 1 = enable
     s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
     s->set_wb_mode(s, 2);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
     s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
@@ -155,6 +224,7 @@ void default_frame_settings()
     s->set_vflip(s, 0);          // 0 = disable , 1 = enable
     s->set_dcw(s, 1);            // 0 = disable , 1 = enable
     s->set_colorbar(s, 0);       // 0 = disable , 1 = enable
+    s->set_denoise(s, 1);
 
     ESP_LOGI(CAM_TAG, "Defaulted camera settings");
 }

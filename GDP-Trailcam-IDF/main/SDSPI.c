@@ -80,21 +80,16 @@ SDSPI_connection_t connect_to_SDSPI(const int miso,
 ///--------------------------------------------------------
 void close_SDSPI_connection(SDSPI_connection_t connection)
 {
-    if (connection.card == NULL)
+    if (connection.card != NULL)
     {
-        // preventing free null error
-        return;
+        // All done, unmount partition and disable SPI peripheral
+        // (Note that this frees the card ptr)
+        esp_vfs_fat_sdcard_unmount(MOUNT_POINT, connection.card);
+        ESP_LOGI(SDSPI_TAG, "Card unmounted");
     }
-
-    // All done, unmount partition and disable SPI peripheral
-    // (Note that this frees the card ptr)
-    esp_vfs_fat_sdcard_unmount(MOUNT_POINT, connection.card);
-    ESP_LOGI(SDSPI_TAG, "Card unmounted");
 
     //deinitialize the bus after all devices are removed
     spi_bus_free(connection.host.slot);
-
-    connection.card = NULL;
 }
 
 ///--------------------------------------------------------
@@ -109,9 +104,16 @@ esp_err_t write_data_SDSPI(const char* path, const uint8_t* data, const size_t l
 
     size_t write_bytes = fwrite(data, sizeof(uint8_t), len, f);
     fclose(f);
-    ESP_LOGI(SDSPI_TAG, "File written, %u bytes", write_bytes);
-
-    return ESP_OK;
+    if (write_bytes != 0)
+    {
+        ESP_LOGI(SDSPI_TAG, "File written, %u bytes", write_bytes);
+        return ESP_OK;
+    }
+    else
+    {
+        ESP_LOGE(SDSPI_TAG, "Zero bytes written to file, errno: %d", errno);
+        return ESP_FAIL;
+    }
 }
 
 ///--------------------------------------------------------

@@ -26,7 +26,14 @@
         "stdlib.h": "c",
         "*.tcc": "cpp",
         "format": "cpp",
-        "random": "c"
+        "random": "c",
+        "camera.h": "c",
+        "timers.h": "c",
+        "esp_log.h": "c",
+        "gpio.h": "c",
+        "freertos.h": "c",
+        "esp_system.h": "c",
+        "esp_camera.h": "c"
     },
     "idf.flashType": "UART"
 }

@@ -18,7 +18,7 @@
 #include "SDSPI.h"
 
 /// @brief Debugging string tag
-static const char *CAM_TAG = "Camera";
+static const char *CAM_TAG = "TrailCamera";
 
 /// @brief List of powerdown pins for all attached cameras
 static const int cam_power_down_pins[] = {CONFIG_PIN_CAM_PWRDN_1, CONFIG_PIN_CAM_PWRDN_2, CONFIG_PIN_CAM_PWRDN_3, CONFIG_PIN_CAM_PWRDN_4};
@@ -29,8 +29,11 @@ static const int cam_power_down_pins[] = {CONFIG_PIN_CAM_PWRDN_1, CONFIG_PIN_CAM
 /// @brief Logic level for camera power on
 #define CAM_POWER_ON 0
 
+/// @brief Time to allow camera to intialize state in POST test
+#define CAM_POST_WAIT_TIME_MS 5000
+
 /// @brief Delay in ms after power down pin is pulled low to init the camera
-#define CAM_WAKEUP_DELAY_MS 60
+#define CAM_WAKEUP_DELAY_MS 75
 
 /// @brief Struct that contains image buffer data (NOTE: buf must be individually freed)
 typedef struct
@@ -47,6 +50,20 @@ typedef struct
 ///
 /// @return camera config structure
 camera_config_t get_default_camera_config(const uint32_t power_down_pin);
+
+/// ------------------------------------------
+/// @brief Performs a basic POST to verify that the camera can be polled for an image
+///
+/// @param config of the camera to test
+///
+/// @return ESP_OK if tests pass
+esp_err_t cam_POST(const camera_config_t config);
+
+/// ------------------------------------------
+/// @brief POSTs all cameras from the list of power down pins
+///
+/// @return ESP_OK if all cams pass
+esp_err_t POST_all_cams();
 
 /// ------------------------------------------
 /// @brief Attempts to start the camera using the given config
