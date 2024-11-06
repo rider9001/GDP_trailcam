@@ -71,6 +71,11 @@ SDSPI_connection_t connect_to_SDSPI(const int miso,
 /// @param connection to the SDSPI, card is nulled
 void close_SDSPI_connection(SDSPI_connection_t connection);
 
+///--------------------------------------------------------
+/// @brief Performs a POST on the SDSPI module
+///
+/// @return ESP_OK if sucsessful
+esp_err_t SDSPI_POST();
 
 ///--------------------------------------------------------
 /// @brief Writes a binary buffer to given filepath
@@ -121,6 +126,14 @@ esp_err_t read_text_SDSPI(const char* path, char* out_text, const size_t len);
 ///
 /// @return size in bytes, read fail will return negative
 long fsize_SDSPI(const char* path);
+
+///--------------------------------------------------------
+/// @brief Deletes the file at the given path
+///
+/// @param path of file to delete
+///
+/// @return ESP_OK if sucsessful
+esp_err_t delete_file_SDSPI(const char* path);
 
 ///--------------------------------------------------------
 /// @brief Checks the existence of the directory in path

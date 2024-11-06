@@ -93,6 +93,68 @@ void close_SDSPI_connection(SDSPI_connection_t connection)
 }
 
 ///--------------------------------------------------------
+esp_err_t SDSPI_POST()
+{
+    ESP_LOGI(SDSPI_TAG, "Starting POST for SDSPI");
+    SDSPI_connection_t POST_connection = connect_to_SDSPI(PIN_NUM_MISO, PIN_NUM_MOSI, PIN_NUM_CLK, PIN_NUM_CS);
+
+    if (POST_connection.card == NULL)
+    {
+        ESP_LOGE(SDSPI_TAG, "Failed to start SDSPI");
+        close_SDSPI_connection(POST_connection);
+        return ESP_FAIL;
+    }
+
+    // Creating test buffer
+    const size_t test_buf_sz = 200;
+    uint8_t test_buf[test_buf_sz];
+
+    for (size_t i = 0; i < test_buf_sz; i++)
+    {
+        test_buf[i] = i;
+    }
+
+    // Test filename
+    const char* test_filename = MOUNT_POINT"/test.bin";
+
+    if (write_data_SDSPI(test_filename, test_buf, test_buf_sz) != ESP_OK)
+    {
+        close_SDSPI_connection(POST_connection);
+        return ESP_FAIL;
+    }
+
+    long readback_size = fsize_SDSPI(test_filename);
+    if (readback_size != test_buf_sz)
+    {
+        ESP_LOGE(SDSPI_TAG, "Filesize discrepancy, %u byte file read back as %ld", test_buf_sz, readback_size);
+        close_SDSPI_connection(POST_connection);
+        return ESP_FAIL;
+    }
+
+    uint8_t readback_buf[test_buf_sz];
+    if (read_data_SDSPI(test_filename, readback_buf, test_buf_sz) != ESP_OK)
+    {
+        close_SDSPI_connection(POST_connection);
+        return ESP_FAIL;
+    }
+
+    if (memcmp(test_buf, readback_buf, test_buf_sz) != 0)
+    {
+        ESP_LOGE(SDSPI_TAG, "Readback data not identical to written!");
+        close_SDSPI_connection(POST_connection);
+        return ESP_FAIL;
+    }
+
+    if (delete_file_SDSPI(test_filename) != ESP_OK)
+    {
+        close_SDSPI_connection(POST_connection);
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+///--------------------------------------------------------
 esp_err_t write_data_SDSPI(const char* path, const uint8_t* data, const size_t len)
 {
     ESP_LOGI(SDSPI_TAG, "Opening file %s", path);
@@ -183,6 +245,23 @@ long fsize_SDSPI(const char* path)
     } else {
         ESP_LOGE(SDSPI_TAG, "Failed to stat %s", path);
         return -1;
+    }
+}
+
+///--------------------------------------------------------
+esp_err_t delete_file_SDSPI(const char* path)
+{
+    ESP_LOGI(SDSPI_TAG, "Deleting file %s", path);
+
+    if (remove(path) == 0)
+    {
+        ESP_LOGI(SDSPI_TAG, "File deleted");
+        return ESP_OK;
+    }
+    else
+    {
+        ESP_LOGE(SDSPI_TAG, "Failed to delete file: errno: %d", errno);
+        return ESP_FAIL;
     }
 }
 
