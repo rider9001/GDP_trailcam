@@ -35,12 +35,40 @@ static const int cam_power_down_pins[] = {CONFIG_PIN_CAM_PWRDN_1, CONFIG_PIN_CAM
 /// @brief Delay in ms after power down pin is pulled low to init the camera
 #define CAM_WAKEUP_DELAY_MS 75
 
-/// @brief Struct that contains image buffer data (NOTE: buf must be individually freed)
+/// @brief Target delay in time between the two images in the motion capture
+#define CAM_MOTION_CAPTURE_WAIT_MS 50
+
+/// @brief Struct that contains jpg image buffer data (NOTE: buf must be individually freed)
 typedef struct
 {
+    // Buffer of image data
     uint8_t* buf;
+
+    // Length of the buffer
     size_t len;
-} image_data_t;
+
+    // Hieght of the image
+    size_t hieght;
+
+    // Width of the image
+    size_t width;
+} jpg_image_data_t;
+
+/// @brief Struct that contains two jpg image datasets taken a short time apart (NOTE: both img bufs must be individually freed)
+typedef struct
+{
+    // Flag for indicating capture sucsess
+    bool capture_sucsess;
+
+    // First image in the sequence
+    jpg_image_data_t img1;
+
+    // Second image in the sequence
+    jpg_image_data_t img2;
+
+    // ms in between each capture
+    size_t ms_between;
+} jpg_motion_data_t;
 
 /// ------------------------------------------
 /// @brief Creates a default camera config sturct to use for initializing and deinitializing a camera
@@ -92,7 +120,7 @@ esp_err_t stop_camera(const camera_config_t cam_config);
 /// @param fb frame buffer to extract
 ///
 /// @return structure of image data
-image_data_t extract_camera_buffer(const camera_fb_t* fb);
+jpg_image_data_t extract_camera_buffer(const camera_fb_t* fb);
 
 /// ------------------------------------------
 /// @brief Writes the given frame buffer to the given path
@@ -114,3 +142,11 @@ void default_frame_settings();
 /// @brief Sets up the power down pins given in cam_power_down_pins as a driven outputs
 /// and sets all camera power down pins to high (camera off)
 void setup_all_cam_power_down_pins();
+
+/// ------------------------------------------
+/// @brief Activates the camera and attempts to capture 2 frames a set period apart
+///
+/// @param config config of the camera to use
+///
+/// @return struct containing two images, if capture_sucsess is false then capture failed
+jpg_motion_data_t get_motion_capture(camera_config_t config);

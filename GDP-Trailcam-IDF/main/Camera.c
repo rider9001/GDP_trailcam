@@ -48,7 +48,8 @@ camera_config_t get_default_camera_config(const uint32_t power_down_pin)
         .frame_size     = FRAMESIZE_QHD,
         .jpeg_quality   = 5,
 
-        .fb_count       = 1,
+        // Two frame buffers, one for each frame of the motion capture
+        .fb_count       = 2,
 
         .fb_location    = CAMERA_FB_IN_PSRAM,
         /* 'When buffers should be filled' <- Not sure what this means */
@@ -194,12 +195,14 @@ esp_err_t stop_camera(const camera_config_t cam_config)
 }
 
 /// ------------------------------------------
-image_data_t extract_camera_buffer(const camera_fb_t* fb)
+jpg_image_data_t extract_camera_buffer(const camera_fb_t* fb)
 {
-    image_data_t img_data;
+    jpg_image_data_t img_data;
     img_data.buf = (uint8_t*) malloc(fb->len);
     memcpy(img_data.buf, fb->buf, fb->len);
     img_data.len = fb->len;
+    img_data.hieght = fb->height;
+    img_data.width = fb->width;
 
     return img_data;
 }
@@ -263,4 +266,54 @@ void setup_all_cam_power_down_pins()
         gpio_set_direction(cam_power_down_pins[i], GPIO_MODE_OUTPUT);
         gpio_set_level(cam_power_down_pins[i], CAM_POWER_OFF);
     }
+}
+
+/// ------------------------------------------
+jpg_motion_data_t get_motion_capture(camera_config_t config)
+{
+    jpg_motion_data_t motion;
+    motion.capture_sucsess = false;
+
+    ESP_LOGI(CAM_TAG, "Starting camera");
+    if (start_camera(config) != ESP_OK)
+    {
+        ESP_LOGE(CAM_TAG, "Failed to start Camera");
+        return motion;
+    }
+
+    default_frame_settings();
+
+    ESP_LOGI(CAM_TAG, "Grabbing frame buffer");
+    uint32_t capture1_milli = esp_log_timestamp();
+    camera_fb_t* frame1 = esp_camera_fb_get();
+    if (!frame1) {
+        ESP_LOGE(CAM_TAG, "Frame buffer could not be acquired");
+        stop_camera(config);
+        return motion;
+    }
+    ESP_LOGI(CAM_TAG, "Camera buffer grabbed sucsessfully");
+    ESP_LOGI(CAM_TAG, "Image is %u bytes", frame1->len);
+
+    vTaskSuspend(pdMS_TO_TICKS(CAM_MOTION_CAPTURE_WAIT_MS));
+
+    ESP_LOGI(CAM_TAG, "Grabbing frame buffer");
+    uint32_t capture2_milli = esp_log_timestamp();
+    camera_fb_t* frame2 = esp_camera_fb_get();
+    if (!frame2) {
+        ESP_LOGE(CAM_TAG, "Frame buffer could not be acquired");
+        stop_camera(config);
+        return motion;
+    }
+    ESP_LOGI(CAM_TAG, "Camera buffer grabbed sucsessfully");
+    ESP_LOGI(CAM_TAG, "Image is %u bytes", frame2->len);
+
+    jpg_image_data_t img1 = extract_camera_buffer(frame1);
+    jpg_image_data_t img2 = extract_camera_buffer(frame2);
+
+    motion.img1 = img1;
+    motion.img2 = img2;
+    motion.ms_between = capture2_milli - capture1_milli;
+
+    motion.capture_sucsess = true;
+    return motion;
 }

@@ -146,7 +146,7 @@ void app_main(void)
             ESP_LOGI(MAIN_TAG, "Camera buffer grabbed sucsessfully");
             ESP_LOGI(MAIN_TAG, "Image is %u bytes", fb->len);
 
-            image_data_t jpg_data = extract_camera_buffer(fb);
+            jpg_image_data_t jpg_data = extract_camera_buffer(fb);
 
             // Return camera buffer
             esp_camera_fb_return(fb);
