@@ -103,6 +103,16 @@ void app_main(void)
         ESP_LOGE(MAIN_TAG, "POST failed on a camera");
         return;
     }
+    ESP_LOGI(MAIN_TAG, "Camera POST sucsess");
+
+    ESP_LOGI(MAIN_TAG, "Running SD SPI POST...");
+    if (SDSPI_POST() != ESP_OK)
+    {
+        ESP_LOGE(MAIN_TAG, "POST failed on a SD SPI");
+        return;
+    }
+    ESP_LOGI(MAIN_TAG, "SD SPI POST sucsess");
+
 
     ESP_LOGI(MAIN_TAG, "Waiting for low");
 

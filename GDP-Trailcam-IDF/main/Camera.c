@@ -72,6 +72,24 @@ esp_err_t cam_POST(const camera_config_t config)
     // Wait 5 seconds to allow the camera to exit any anomalous state
     vTaskDelay(pdMS_TO_TICKS(5000));
 
+    // Shutdown camera
+    ESP_LOGI(CAM_TAG, "Stopping camera");
+    if (stop_camera(config) != ESP_OK)
+    {
+        ESP_LOGE(CAM_TAG, "Failed to stop camera");
+        return ESP_FAIL;
+    }
+
+    // Wait 1 second
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    // Restart camera
+    if (start_camera(config) != ESP_OK)
+    {
+        ESP_LOGE(CAM_TAG, "Camera startup for pwr_dwn pin %i failed", config.pin_pwdn);
+        return ESP_FAIL;
+    }
+
     // Setup frame settings
     default_frame_settings();
 

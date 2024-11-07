@@ -115,7 +115,15 @@ esp_err_t SDSPI_POST()
     }
 
     // Test filename
-    const char* test_filename = MOUNT_POINT"/test.bin";
+    const char* test_filename = MOUNT_POINT"/testdir/test.bin";
+
+    const char* test_dir = MOUNT_POINT"/testdir";
+
+    if (create_dir_SDSPI(test_dir) != ESP_OK)
+    {
+        close_SDSPI_connection(POST_connection);
+        return ESP_FAIL;
+    }
 
     if (write_data_SDSPI(test_filename, test_buf, test_buf_sz) != ESP_OK)
     {
@@ -151,6 +159,13 @@ esp_err_t SDSPI_POST()
         return ESP_FAIL;
     }
 
+    if (delete_dir_SDSPI(test_dir) != ESP_OK)
+    {
+        close_SDSPI_connection(POST_connection);
+        return ESP_FAIL;
+    }
+
+    close_SDSPI_connection(POST_connection);
     return ESP_OK;
 }
 
@@ -308,6 +323,28 @@ esp_err_t create_dir_SDSPI(const char* path)
             return ESP_FAIL;
         }
     }
+}
+
+///--------------------------------------------------------
+esp_err_t delete_dir_SDSPI(const char* path)
+{
+    ESP_LOGI(SDSPI_TAG, "Deleting directory %s", path);
+    if (rmdir(path) != 0)
+    {
+        if (errno == ENOTDIR)
+        {
+            ESP_LOGW(SDSPI_TAG, "Directory does not exist");
+            return ESP_ERR_INVALID_ARG;
+        }
+        else
+        {
+            ESP_LOGE(SDSPI_TAG, "Directory deletion failed");
+            return ESP_FAIL;
+        }
+    }
+
+    ESP_LOGI(SDSPI_TAG, "Directory deleted sucsessfully");
+    return ESP_OK;
 }
 
 ///--------------------------------------------------------

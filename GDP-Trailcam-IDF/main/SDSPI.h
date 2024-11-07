@@ -154,6 +154,14 @@ bool check_dir_SDSPI(const char* path);
 esp_err_t create_dir_SDSPI(const char* path);
 
 ///--------------------------------------------------------
+/// @brief Deletes the directory at specified path
+///
+/// @param path to directory to delete
+///
+/// @return ESP_OK if sucsessful ESP_ERR_INVALID_ARG if directory already exists, ESP_FAIL if creation fails
+esp_err_t delete_dir_SDSPI(const char* path);
+
+///--------------------------------------------------------
 /// @brief Get the name of the nth file in a directory
 /// Returns null if there is no nth file, count starts at 0
 ///
