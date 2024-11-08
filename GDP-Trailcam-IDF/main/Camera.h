@@ -66,8 +66,11 @@ typedef struct
     // Second image in the sequence
     jpg_image_data_t img2;
 
-    // ms in between each capture
-    size_t ms_between;
+    // ms of end of first capture
+    size_t t1;
+
+    // ms of end of second capture
+    size_t t2;
 } jpg_motion_data_t;
 
 /// ------------------------------------------
@@ -132,7 +135,16 @@ jpg_image_data_t extract_camera_buffer(const camera_fb_t* fb);
 /// @param save_path path with filename to write buffer to
 ///
 /// @return ESP_OK if sucsessful
-esp_err_t write_fb_to_SD(const camera_fb_t* fb, const char* save_path);
+esp_err_t write_fb_to_SD(const char* save_path, const camera_fb_t* fb);
+
+/// ------------------------------------------
+/// @brief Writes a jpg image data struct to the SD at the given path
+///
+/// @param path to write image data (includes filename)
+/// @param jpg_data to write to storage
+///
+/// @return ESP_OK if sucsessful
+esp_err_t write_jpg_data_to_SD(const char* path, const jpg_image_data_t jpg_data);
 
 /// ------------------------------------------
 /// @brief Sets all camera image settings to sensible values
@@ -150,3 +162,9 @@ void setup_all_cam_power_down_pins();
 ///
 /// @return struct containing two images, if capture_sucsess is false then capture failed
 jpg_motion_data_t get_motion_capture(camera_config_t config);
+
+/// ------------------------------------------
+/// @brief Frees all buffer data in motion data sturct, checks for null
+///
+/// @param data struct to free
+void free_motion_data(jpg_motion_data_t data);

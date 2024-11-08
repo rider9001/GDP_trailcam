@@ -3,6 +3,10 @@
 ///
 /// @brief Header file for SD SPI interaction, handles filesystem read/writes and
 /// directory scanning.
+///
+/// @note README: For some reason, the SD SPI seems to refuse any filenames that contain anything other than
+/// alphabetical, numierical and '.' characters (needs testing). Lower and uppercase can be used, but all filenames
+/// will be written in capitals only. Spaces break filenames
 /// ------------------------------------------
 #pragma once
 
@@ -33,6 +37,8 @@
 /// @brief Mount point for the sdcard, must be prefixed to all filepaths
 #define MOUNT_POINT "/sdcard"
 
+
+/// README: Any static buffer above this value tends to result in a range of errors, use malloc if needed
 /// @brief Max length allowed for a filename under unix
 #define FILENAME_MAX_SIZE 256
 
@@ -58,12 +64,11 @@ typedef struct {
 /// @param cs pin no
 /// @param[out] connection pointer to be filled with connection info, card is set null
 /// if connection fails
-///
-/// @return connection structure, card will be null if connection failed
-SDSPI_connection_t connect_to_SDSPI(const int miso,
-                                    const int mosi,
-                                    const int sclk,
-                                    const int cs);
+void connect_to_SDSPI(const int miso,
+                      const int mosi,
+                      const int sclk,
+                      const int cs,
+                      SDSPI_connection_t* connection);
 
 ///--------------------------------------------------------
 /// @brief Closes the SDSPI connection and nulls the pointer
@@ -73,6 +78,8 @@ void close_SDSPI_connection(SDSPI_connection_t connection);
 
 ///--------------------------------------------------------
 /// @brief Performs a POST on the SDSPI module
+///
+/// @note Assumes a working SDSPI connection has already been made
 ///
 /// @return ESP_OK if sucsessful
 esp_err_t SDSPI_POST();
@@ -85,7 +92,7 @@ esp_err_t SDSPI_POST();
 /// @param len length of buffer to write
 ///
 /// @return ESP_OK if sucsessful
-esp_err_t write_data_SDSPI(const char* path, const uint8_t* data, const size_t len);
+esp_err_t write_data_SDSPI(const char* path, const void* data, const size_t len);
 
 ///--------------------------------------------------------
 /// @brief Writes a string to the given filepath, if file exists then text will be
@@ -106,7 +113,7 @@ esp_err_t write_text_SDSPI(const char* path, const char* text);
 /// @param len number of bytes to read into buffer
 ///
 /// @return ESP_OK if sucsessful
-esp_err_t read_data_SDSPI(const char* path, uint8_t* out_buf, const size_t len);
+esp_err_t read_data_SDSPI(const char* path, void* out_buf, const size_t len);
 
 ///--------------------------------------------------------
 /// @brief Reads text from file into string buffer, assumes out_text is

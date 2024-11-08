@@ -52,7 +52,7 @@ camera_config_t get_default_camera_config(const uint32_t power_down_pin)
         .fb_count       = 2,
 
         .fb_location    = CAMERA_FB_IN_PSRAM,
-        /* 'When buffers should be filled' <- Not sure what this means */
+        /* 'When buffers should be filled' */
         .grab_mode      = CAMERA_GRAB_WHEN_EMPTY
     };
 
@@ -70,8 +70,8 @@ esp_err_t cam_POST(const camera_config_t config)
         return ESP_FAIL;
     }
 
-    // Wait 5 seconds to allow the camera to exit any anomalous state
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    // Wait 3 seconds to allow the camera to exit any anomalous state
+    vTaskDelay(pdMS_TO_TICKS(3000));
 
     // Shutdown camera
     ESP_LOGI(CAM_TAG, "Stopping camera");
@@ -81,8 +81,8 @@ esp_err_t cam_POST(const camera_config_t config)
         return ESP_FAIL;
     }
 
-    // Wait 1 second
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    // Wait half a second
+    vTaskDelay(pdMS_TO_TICKS(500));
 
     // Restart camera
     if (start_camera(config) != ESP_OK)
@@ -163,6 +163,8 @@ esp_err_t start_camera(const camera_config_t cam_config)
         return err;
     }
 
+    esp_camera_return_all();
+
     ESP_LOGI(CAM_TAG, "Camera Init Success");
     return ESP_OK;
 }
@@ -208,9 +210,15 @@ jpg_image_data_t extract_camera_buffer(const camera_fb_t* fb)
 }
 
 /// ------------------------------------------
-esp_err_t write_fb_to_SD(const camera_fb_t* fb, const char* save_path)
+esp_err_t write_fb_to_SD(const char* save_path, const camera_fb_t* fb)
 {
     return write_data_SDSPI(save_path, fb->buf, fb->len);
+}
+
+/// ------------------------------------------
+esp_err_t write_jpg_data_to_SD(const char* path, const jpg_image_data_t jpg_data)
+{
+    return write_data_SDSPI(path, jpg_data.buf, jpg_data.len);
 }
 
 /// ------------------------------------------
@@ -227,11 +235,11 @@ void default_frame_settings()
     s->set_contrast(s, 0);       // -2 to 2
     s->set_saturation(s, 0);     // -2 to 2
     s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
-    s->set_whitebal(s, 0);       // 0 = disable , 1 = enable
-    s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
-    s->set_wb_mode(s, 2);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+    s->set_whitebal(s, 1);       // 0 = disable , 1 = enable
+    s->set_awb_gain(s, 0);       // 0 = disable , 1 = enable
+    s->set_wb_mode(s, 4);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
     s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
-    s->set_aec2(s, 0);           // 0 = disable , 1 = enable
+    s->set_aec2(s, 0);           // 0 = disable , 1 = enabled
     s->set_ae_level(s, 0);       // -2 to 2
     s->set_aec_value(s, 300);    // 0 to 1200
     s->set_gain_ctrl(s, 1);      // 0 = disable , 1 = enable
@@ -262,9 +270,9 @@ void setup_all_cam_power_down_pins()
             continue;
         }
 
-        esp_rom_gpio_pad_select_gpio(cam_power_down_pins[i]);
-        gpio_set_direction(cam_power_down_pins[i], GPIO_MODE_OUTPUT);
-        gpio_set_level(cam_power_down_pins[i], CAM_POWER_OFF);
+        esp_rom_gpio_pad_select_gpio((uint32_t)cam_power_down_pins[i]);
+        gpio_set_direction((uint32_t)cam_power_down_pins[i], GPIO_MODE_OUTPUT);
+        gpio_set_level((uint32_t)cam_power_down_pins[i], CAM_POWER_OFF);
     }
 }
 
@@ -273,6 +281,8 @@ jpg_motion_data_t get_motion_capture(camera_config_t config)
 {
     jpg_motion_data_t motion;
     motion.capture_sucsess = false;
+    motion.img1.buf = NULL;
+    motion.img2.buf = NULL;
 
     ESP_LOGI(CAM_TAG, "Starting camera");
     if (start_camera(config) != ESP_OK)
@@ -284,7 +294,7 @@ jpg_motion_data_t get_motion_capture(camera_config_t config)
     default_frame_settings();
 
     ESP_LOGI(CAM_TAG, "Grabbing frame buffer");
-    uint32_t capture1_milli = esp_log_timestamp();
+    size_t capture1_milli = esp_log_timestamp();
     camera_fb_t* frame1 = esp_camera_fb_get();
     if (!frame1) {
         ESP_LOGE(CAM_TAG, "Frame buffer could not be acquired");
@@ -294,10 +304,8 @@ jpg_motion_data_t get_motion_capture(camera_config_t config)
     ESP_LOGI(CAM_TAG, "Camera buffer grabbed sucsessfully");
     ESP_LOGI(CAM_TAG, "Image is %u bytes", frame1->len);
 
-    vTaskSuspend(pdMS_TO_TICKS(CAM_MOTION_CAPTURE_WAIT_MS));
-
     ESP_LOGI(CAM_TAG, "Grabbing frame buffer");
-    uint32_t capture2_milli = esp_log_timestamp();
+    size_t capture2_milli = esp_log_timestamp();
     camera_fb_t* frame2 = esp_camera_fb_get();
     if (!frame2) {
         ESP_LOGE(CAM_TAG, "Frame buffer could not be acquired");
@@ -307,13 +315,39 @@ jpg_motion_data_t get_motion_capture(camera_config_t config)
     ESP_LOGI(CAM_TAG, "Camera buffer grabbed sucsessfully");
     ESP_LOGI(CAM_TAG, "Image is %u bytes", frame2->len);
 
+    ESP_LOGI(CAM_TAG, "Frame diff is %ums", capture2_milli - capture1_milli);
+
     jpg_image_data_t img1 = extract_camera_buffer(frame1);
+    esp_camera_fb_return(frame1);
     jpg_image_data_t img2 = extract_camera_buffer(frame2);
+    esp_camera_fb_return(frame2);
+
+    ESP_LOGI(CAM_TAG, "Stopping camera");
+    if (stop_camera(config) != ESP_OK)
+    {
+        ESP_LOGE(CAM_TAG, "Failed to stop camera");
+    }
 
     motion.img1 = img1;
     motion.img2 = img2;
-    motion.ms_between = capture2_milli - capture1_milli;
+    motion.t1 = capture1_milli;
+    motion.t2 = capture2_milli;
 
+    ESP_LOGI(CAM_TAG, "Motion capture image grab sucsess");
     motion.capture_sucsess = true;
     return motion;
+}
+
+/// ------------------------------------------
+void free_motion_data(jpg_motion_data_t data)
+{
+    if (data.img1.buf != NULL)
+    {
+        free(data.img1.buf);
+    }
+
+    if (data.img2.buf != NULL)
+    {
+        free(data.img2.buf);
+    }
 }

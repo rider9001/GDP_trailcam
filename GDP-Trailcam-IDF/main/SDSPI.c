@@ -9,16 +9,13 @@
 static const char *SDSPI_TAG = "SDSPI";
 
 ///--------------------------------------------------------
-SDSPI_connection_t connect_to_SDSPI(const int miso,
-                                    const int mosi,
-                                    const int sclk,
-                                    const int cs)
+void connect_to_SDSPI(const int miso,
+                      const int mosi,
+                      const int sclk,
+                      const int cs,
+                      SDSPI_connection_t* connection)
 {
     // Dont ask me what half this stuff does, im just following the example - E
-
-    // Set card to null, this will be overwritten if the connection succeeds
-    SDSPI_connection_t new_connection;
-    new_connection.card = NULL;
 
     sdmmc_card_t *card;
     const char mount_point[] = MOUNT_POINT;
@@ -44,7 +41,8 @@ SDSPI_connection_t connect_to_SDSPI(const int miso,
     if (ret != ESP_OK)
     {
         ESP_LOGE(SDSPI_TAG, "Failed to initialize bus.");
-        return new_connection;
+        connection->card = NULL;
+        return;
     }
 
     // This initializes the slot without card detect (CD) and write protect (WP) signals.
@@ -65,16 +63,15 @@ SDSPI_connection_t connect_to_SDSPI(const int miso,
     if (ret != ESP_OK)
     {
         ESP_LOGE(SDSPI_TAG, "Failed to mount filesystem.");
-        return new_connection;
+        connection->card = NULL;
+        return;
     }
 
     ESP_LOGI(SDSPI_TAG, "Filesystem mounted");
 
     // Connection sucsessful, set connection data
-    new_connection.host = host;
-    new_connection.card = card;
-
-    return new_connection;
+    connection->host = host;
+    connection->card = card;
 }
 
 ///--------------------------------------------------------
@@ -96,14 +93,6 @@ void close_SDSPI_connection(SDSPI_connection_t connection)
 esp_err_t SDSPI_POST()
 {
     ESP_LOGI(SDSPI_TAG, "Starting POST for SDSPI");
-    SDSPI_connection_t POST_connection = connect_to_SDSPI(PIN_NUM_MISO, PIN_NUM_MOSI, PIN_NUM_CLK, PIN_NUM_CS);
-
-    if (POST_connection.card == NULL)
-    {
-        ESP_LOGE(SDSPI_TAG, "Failed to start SDSPI");
-        close_SDSPI_connection(POST_connection);
-        return ESP_FAIL;
-    }
 
     // Creating test buffer
     const size_t test_buf_sz = 200;
@@ -121,13 +110,11 @@ esp_err_t SDSPI_POST()
 
     if (create_dir_SDSPI(test_dir) != ESP_OK)
     {
-        close_SDSPI_connection(POST_connection);
         return ESP_FAIL;
     }
 
     if (write_data_SDSPI(test_filename, test_buf, test_buf_sz) != ESP_OK)
     {
-        close_SDSPI_connection(POST_connection);
         return ESP_FAIL;
     }
 
@@ -135,42 +122,36 @@ esp_err_t SDSPI_POST()
     if (readback_size != test_buf_sz)
     {
         ESP_LOGE(SDSPI_TAG, "Filesize discrepancy, %u byte file read back as %ld", test_buf_sz, readback_size);
-        close_SDSPI_connection(POST_connection);
         return ESP_FAIL;
     }
 
     uint8_t readback_buf[test_buf_sz];
     if (read_data_SDSPI(test_filename, readback_buf, test_buf_sz) != ESP_OK)
     {
-        close_SDSPI_connection(POST_connection);
         return ESP_FAIL;
     }
 
     if (memcmp(test_buf, readback_buf, test_buf_sz) != 0)
     {
         ESP_LOGE(SDSPI_TAG, "Readback data not identical to written!");
-        close_SDSPI_connection(POST_connection);
         return ESP_FAIL;
     }
 
     if (delete_file_SDSPI(test_filename) != ESP_OK)
     {
-        close_SDSPI_connection(POST_connection);
         return ESP_FAIL;
     }
 
     if (delete_dir_SDSPI(test_dir) != ESP_OK)
     {
-        close_SDSPI_connection(POST_connection);
         return ESP_FAIL;
     }
 
-    close_SDSPI_connection(POST_connection);
     return ESP_OK;
 }
 
 ///--------------------------------------------------------
-esp_err_t write_data_SDSPI(const char* path, const uint8_t* data, const size_t len)
+esp_err_t write_data_SDSPI(const char* path, const void* data, const size_t len)
 {
     ESP_LOGI(SDSPI_TAG, "Opening file %s", path);
     FILE *f = fopen(path, "wb");
@@ -179,7 +160,7 @@ esp_err_t write_data_SDSPI(const char* path, const uint8_t* data, const size_t l
         return ESP_FAIL;
     }
 
-    size_t write_bytes = fwrite(data, sizeof(uint8_t), len, f);
+    size_t write_bytes = fwrite(data, 1, len, f);
     fclose(f);
     if (write_bytes != 0)
     {
@@ -204,15 +185,25 @@ esp_err_t write_text_SDSPI(const char* path, const char* text)
         return ESP_FAIL;
     }
 
+    ESP_LOGI(SDSPI_TAG, "String is %u chars", strlen(text));
     size_t write_chars = fwrite(text, sizeof(char), strlen(text), f);
     fclose(f);
-    ESP_LOGI(SDSPI_TAG, "File written, %u chars", write_chars - 1);
+    if (write_chars != 0)
+    {
+        ESP_LOGI(SDSPI_TAG, "File written, %u chars", write_chars);
+        return ESP_OK;
+    }
+    else
+    {
+        ESP_LOGE(SDSPI_TAG, "Zero chars written to file, errno: %d", errno);
+        return ESP_FAIL;
+    }
 
     return ESP_OK;
 }
 
 ///--------------------------------------------------------
-esp_err_t read_data_SDSPI(const char* path, uint8_t* out_buf, const size_t len)
+esp_err_t read_data_SDSPI(const char* path, void* out_buf, const size_t len)
 {
     ESP_LOGI(SDSPI_TAG, "Opening file %s", path);
     FILE *f = fopen(path, "r");
@@ -221,7 +212,7 @@ esp_err_t read_data_SDSPI(const char* path, uint8_t* out_buf, const size_t len)
         return ESP_FAIL;
     }
 
-    size_t read_bytes = fread(out_buf, sizeof(uint8_t), len, f);
+    size_t read_bytes = fread(out_buf, 1, len, f);
     fclose(f);
     ESP_LOGI(SDSPI_TAG, "File read, %u bytes", read_bytes);
 

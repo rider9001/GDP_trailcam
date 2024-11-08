@@ -53,6 +53,10 @@ void PIR_state_latch()
         // when unpaused that means that the PIR has triggered, run camera task
         xQueueSend(cam_queue, &pin, NULL);
 
+        // Wait this task for a few seconds whilst camera task runs to prevent
+        // runnning pushing another image capture for the same incident
+        vTaskDelay(pdMS_TO_TICKS(2000));
+
         PIR_active = 1;
         while (PIR_active)
         {
@@ -80,30 +84,13 @@ void PIR_state_latch()
 
 void app_main(void)
 {
-    esp_rom_gpio_pad_select_gpio(PIR_PIN);
-    gpio_set_direction(PIR_PIN, GPIO_MODE_INPUT);
-    gpio_pulldown_dis(PIR_PIN);
-    gpio_pullup_en(PIR_PIN);
-    gpio_set_intr_type(PIR_PIN, GPIO_INTR_LOW_LEVEL);
-
-    cam_queue = xQueueCreate(10, sizeof(int));
-
-    xTaskCreate(PIR_state_latch, "PIR_state_latch", 1024 * 16, NULL, 3, &PIR_trig_handle);
-    vTaskPrioritySet(NULL, 4);
-
-    gpio_install_isr_service(0);
-
-    // This should always be run first, sets all power down pins as outputs and shuts down all cameras
-    setup_all_cam_power_down_pins();
-    int cam_pwr_pin = -1;
-
-    ESP_LOGI(MAIN_TAG, "POSTing all cameras");
-    if (POST_all_cams() != ESP_OK)
+    // Most SDSPI functions assume that there exists a working connection already
+    connect_to_SDSPI(PIN_NUM_MISO, PIN_NUM_MOSI, PIN_NUM_CLK, PIN_NUM_CS, &connection);
+    if (connection.card == NULL)
     {
-        ESP_LOGE(MAIN_TAG, "POST failed on a camera");
+        ESP_LOGE(MAIN_TAG, "Failed to start SDSPI");
         return;
     }
-    ESP_LOGI(MAIN_TAG, "Camera POST sucsess");
 
     ESP_LOGI(MAIN_TAG, "Running SD SPI POST...");
     if (SDSPI_POST() != ESP_OK)
@@ -114,6 +101,32 @@ void app_main(void)
     ESP_LOGI(MAIN_TAG, "SD SPI POST sucsess");
 
 
+    ESP_LOGI(MAIN_TAG, "Installing ISR service");
+    gpio_install_isr_service(0);
+
+    // This should always be run first, sets all power down pins as outputs and shuts down all cameras
+    ESP_LOGI(MAIN_TAG, "Setting up cam power pins");
+    setup_all_cam_power_down_pins();
+
+    ESP_LOGI(MAIN_TAG, "POSTing all cameras");
+    if (POST_all_cams() != ESP_OK)
+    {
+        ESP_LOGE(MAIN_TAG, "POST failed on a camera");
+        return;
+    }
+    ESP_LOGI(MAIN_TAG, "Camera POST sucsess");
+
+    cam_queue = xQueueCreate(10, sizeof(int));
+
+    xTaskCreate(PIR_state_latch, "PIR_state_latch", 1024 * 16, NULL, 3, &PIR_trig_handle);
+    vTaskPrioritySet(NULL, 4);
+
+    esp_rom_gpio_pad_select_gpio(PIR_PIN);
+    gpio_set_direction(PIR_PIN, GPIO_MODE_INPUT);
+    gpio_pulldown_dis(PIR_PIN);
+    gpio_pullup_en(PIR_PIN);
+    gpio_set_intr_type(PIR_PIN, GPIO_INTR_LOW_LEVEL);
+
     ESP_LOGI(MAIN_TAG, "Waiting for low");
 
     // Only engage ISR once all cams tested
@@ -121,63 +134,53 @@ void app_main(void)
 
     while(1)
     {
+        int cam_pwr_pin = -1;
         if (xQueueReceive(cam_queue, &cam_pwr_pin, portMAX_DELAY))
         {
             ESP_LOGI(MAIN_TAG, "Starting capture on cam_pwr_pin: %i", cam_pwr_pin);
 
             config = get_default_camera_config(cam_pwr_pin);
 
-            ESP_LOGI(MAIN_TAG, "Starting camera");
-            if (start_camera(config) != ESP_OK)
+            jpg_motion_data_t motion = get_motion_capture(config);
+
+            ESP_LOGI(MAIN_TAG, "Time between is: %ums", motion.t2 - motion.t1);
+
+            char dir[64];
+            sprintf(dir, MOUNT_POINT"/%u", motion.t1);
+
+            if (create_dir_SDSPI(dir) == ESP_OK)
             {
-                ESP_LOGE(MAIN_TAG, "Failed to start Camera");
-                continue;
+                char filenm1[FILENAME_MAX_SIZE];
+                sprintf(filenm1, "%s/img1.jpg", dir);
+
+                if (write_jpg_data_to_SD(filenm1, motion.img1) != ESP_OK)
+                {
+                    ESP_LOGE(MAIN_TAG, "Failed to write %s", filenm1);
+                }
+
+                char filenm2[FILENAME_MAX_SIZE];
+                sprintf(filenm2, "%s/img2.jpg", dir);
+
+                if (write_jpg_data_to_SD(filenm2, motion.img2) != ESP_OK)
+                {
+                    ESP_LOGE(MAIN_TAG, "Failed to write %s", filenm2);
+                }
+
+                char filenm_info[FILENAME_MAX_SIZE];
+                sprintf(filenm_info, "%s/info.txt", dir);
+
+                char* info_text = malloc(300 * sizeof(char));
+                sprintf(info_text, "Images were taken %ums apart.\nImage 1: %u\nImage 2: %u\n"
+                                   "Image res is %ux%u", motion.t2 - motion.t1,
+                                   motion.t1, motion.t2, motion.img1.width, motion.img1.hieght);
+                if (write_text_SDSPI(filenm_info, info_text) != ESP_OK)
+                {
+                    ESP_LOGE(MAIN_TAG, "Failed to write %s", filenm_info);
+                }
+                free(info_text);
             }
 
-            default_frame_settings();
-
-            ESP_LOGI(MAIN_TAG, "Grabbing frame buffer");
-            camera_fb_t* fb = esp_camera_fb_get();
-            if (!fb) {
-                ESP_LOGE(MAIN_TAG, "Frame buffer could not be acquired");
-                stop_camera(config);
-                continue;
-            }
-            ESP_LOGI(MAIN_TAG, "Camera buffer grabbed sucsessfully");
-            ESP_LOGI(MAIN_TAG, "Image is %u bytes", fb->len);
-
-            jpg_image_data_t jpg_data = extract_camera_buffer(fb);
-
-            // Return camera buffer
-            esp_camera_fb_return(fb);
-
-            ESP_LOGI(MAIN_TAG, "Stopping camera");
-            if (stop_camera(config) != ESP_OK)
-            {
-                ESP_LOGE(MAIN_TAG, "Failed to stop camera");
-            }
-
-            ESP_LOGI(MAIN_TAG, "Starting SDSPI comms.");
-            connection = connect_to_SDSPI(PIN_NUM_MISO, PIN_NUM_MOSI, PIN_NUM_CLK, PIN_NUM_CS);
-            if (connection.card == NULL)
-            {
-                ESP_LOGE(MAIN_TAG, "Failed to start SDSPI");
-                close_SDSPI_connection(connection);
-                continue;
-            }
-
-            char img_file[FILENAME_MAX_SIZE];
-            sprintf(img_file, MOUNT_POINT"/img%u.jpg", (size_t)esp_log_timestamp());
-
-            ESP_LOGI(MAIN_TAG, "Writing frame buffer to SD: %s", img_file);
-            if(write_data_SDSPI(img_file, jpg_data.buf, jpg_data.len) != ESP_OK)
-            {
-                ESP_LOGE(MAIN_TAG, "Failed to write camera buffer");
-            }
-
-            free(jpg_data.buf);
-
-            close_SDSPI_connection(connection);
+            free_motion_data(motion);
         }
     }
 }
