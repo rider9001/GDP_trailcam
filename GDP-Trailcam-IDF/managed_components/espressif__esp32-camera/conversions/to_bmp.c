@@ -159,6 +159,59 @@ static bool _rgb565_write(void * arg, uint16_t x, uint16_t y, uint16_t w, uint16
     return true;
 }
 
+// User created grayscale writer
+static bool _grayscale_write(void * arg, uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t *data)
+{
+    // Not sure if this has to be included to work with esp_jpg_decode
+    rgb_jpg_decoder * jpeg = (rgb_jpg_decoder *)arg;
+    if(!data){
+        if(x == 0 && y == 0){
+            //write start
+            jpeg->width = w;
+            jpeg->height = h;
+            //if output is null, this is BMP
+            if(!jpeg->output){
+                jpeg->output = (uint8_t *)_malloc((w*h*3)+jpeg->data_offset);
+                if(!jpeg->output){
+                    return false;
+                }
+            }
+        } else {
+            //write end
+        }
+        return true;
+    }
+
+
+    // Good job leaving all of these completely uncommented and unreadble esp!
+    // Making a best guess on the role of each of these
+    size_t jw = jpeg->width*3; // bytes per line of decoded rgb888
+    size_t jw2 = jpeg->width; // bytes per line of output
+    size_t t = y * jw; // y offset of source?
+    size_t t2 = y * jw2; // y offset of output?
+    size_t b = t + (h * jw); // end byte?
+    size_t l = x; // x offset of source?
+    uint8_t *out = jpeg->output+jpeg->data_offset; // output buffer start
+    uint8_t *o = out; // output buffer
+    size_t iy, iy2, ix, ix2; // indexes for x,y locations on source and output
+
+    w = w * 3; // byte width of source?
+
+    for(iy=t, iy2=t2; iy<b; iy+=jw, iy2+=jw2) {
+        o = out+iy2+l;
+        for(ix2=ix=0; ix<w; ix+= 3, ix2++) {
+            uint16_t r = data[ix];
+            uint16_t g = data[ix+1];
+            uint16_t b = data[ix+2];
+            // RGB given equal weigting in conversion
+            uint16_t gray = (r + g + b) / 3;
+            o[ix2] = gray & 0xff;
+        }
+        data+=w;
+    }
+    return true;
+}
+
 //input buffer
 static unsigned int _jpg_read(void * arg, size_t index, uint8_t *buf, size_t len)
 {
@@ -194,6 +247,22 @@ bool jpg2rgb565(const uint8_t *src, size_t src_len, uint8_t * out, jpg_scale_t s
     jpeg.data_offset = 0;
 
     if(esp_jpg_decode(src_len, scale, _jpg_read, _rgb565_write, (void*)&jpeg) != ESP_OK){
+        return false;
+    }
+    return true;
+}
+
+// User created converter from jpg to grayscale
+bool jpg2grayscale(const uint8_t* src, size_t src_len, uint8_t* out)
+{
+    rgb_jpg_decoder jpeg;
+    jpeg.width = 0;
+    jpeg.height = 0;
+    jpeg.input = src;
+    jpeg.output = out;
+    jpeg.data_offset = 0;
+
+    if(esp_jpg_decode(src_len, JPG_SCALE_NONE, _jpg_read, _grayscale_write, (void*)&jpeg) != ESP_OK){
         return false;
     }
     return true;

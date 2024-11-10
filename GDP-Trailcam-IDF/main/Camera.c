@@ -45,7 +45,7 @@ camera_config_t get_default_camera_config(const uint32_t power_down_pin)
 
         // Format and framesize settings, not sure if jpeg quality has any effect outside of JPEG mode
         .pixel_format   = PIXFORMAT_JPEG,
-        .frame_size     = FRAMESIZE_QHD,
+        .frame_size     = FRAMESIZE_FHD,
         .jpeg_quality   = 5,
 
         // Two frame buffers, one for each frame of the motion capture
@@ -197,13 +197,13 @@ esp_err_t stop_camera(const camera_config_t cam_config)
 }
 
 /// ------------------------------------------
-jpg_image_data_t extract_camera_buffer(const camera_fb_t* fb)
+jpg_image_t extract_camera_buffer(const camera_fb_t* fb)
 {
-    jpg_image_data_t img_data;
+    jpg_image_t img_data;
     img_data.buf = (uint8_t*) malloc(fb->len);
     memcpy(img_data.buf, fb->buf, fb->len);
     img_data.len = fb->len;
-    img_data.hieght = fb->height;
+    img_data.height = fb->height;
     img_data.width = fb->width;
 
     return img_data;
@@ -216,7 +216,7 @@ esp_err_t write_fb_to_SD(const char* save_path, const camera_fb_t* fb)
 }
 
 /// ------------------------------------------
-esp_err_t write_jpg_data_to_SD(const char* path, const jpg_image_data_t jpg_data)
+esp_err_t write_jpg_data_to_SD(const char* path, const jpg_image_t jpg_data)
 {
     return write_data_SDSPI(path, jpg_data.buf, jpg_data.len);
 }
@@ -277,12 +277,12 @@ void setup_all_cam_power_down_pins()
 }
 
 /// ------------------------------------------
-jpg_motion_data_t get_motion_capture(camera_config_t config)
+jpg_motion_data_t* get_motion_capture(camera_config_t config)
 {
-    jpg_motion_data_t motion;
-    motion.capture_sucsess = false;
-    motion.img1.buf = NULL;
-    motion.img2.buf = NULL;
+    jpg_motion_data_t* motion = malloc(sizeof(jpg_motion_data_t));
+    motion->data_valid = false;
+    motion->img1.buf = NULL;
+    motion->img2.buf = NULL;
 
     ESP_LOGI(CAM_TAG, "Starting camera");
     if (start_camera(config) != ESP_OK)
@@ -299,7 +299,8 @@ jpg_motion_data_t get_motion_capture(camera_config_t config)
     if (!frame1) {
         ESP_LOGE(CAM_TAG, "Frame buffer could not be acquired");
         stop_camera(config);
-        return motion;
+        free(motion);
+        return NULL;
     }
     ESP_LOGI(CAM_TAG, "Camera buffer grabbed sucsessfully");
     ESP_LOGI(CAM_TAG, "Image is %u bytes", frame1->len);
@@ -310,16 +311,17 @@ jpg_motion_data_t get_motion_capture(camera_config_t config)
     if (!frame2) {
         ESP_LOGE(CAM_TAG, "Frame buffer could not be acquired");
         stop_camera(config);
-        return motion;
+        free(motion);
+        return NULL;
     }
     ESP_LOGI(CAM_TAG, "Camera buffer grabbed sucsessfully");
     ESP_LOGI(CAM_TAG, "Image is %u bytes", frame2->len);
 
     ESP_LOGI(CAM_TAG, "Frame diff is %ums", capture2_milli - capture1_milli);
 
-    jpg_image_data_t img1 = extract_camera_buffer(frame1);
+    jpg_image_t img1 = extract_camera_buffer(frame1);
     esp_camera_fb_return(frame1);
-    jpg_image_data_t img2 = extract_camera_buffer(frame2);
+    jpg_image_t img2 = extract_camera_buffer(frame2);
     esp_camera_fb_return(frame2);
 
     ESP_LOGI(CAM_TAG, "Stopping camera");
@@ -328,26 +330,12 @@ jpg_motion_data_t get_motion_capture(camera_config_t config)
         ESP_LOGE(CAM_TAG, "Failed to stop camera");
     }
 
-    motion.img1 = img1;
-    motion.img2 = img2;
-    motion.t1 = capture1_milli;
-    motion.t2 = capture2_milli;
+    motion->img1 = img1;
+    motion->img2 = img2;
+    motion->t1 = capture1_milli;
+    motion->t2 = capture2_milli;
 
     ESP_LOGI(CAM_TAG, "Motion capture image grab sucsess");
-    motion.capture_sucsess = true;
+    motion->data_valid = true;
     return motion;
-}
-
-/// ------------------------------------------
-void free_motion_data(jpg_motion_data_t data)
-{
-    if (data.img1.buf != NULL)
-    {
-        free(data.img1.buf);
-    }
-
-    if (data.img2.buf != NULL)
-    {
-        free(data.img2.buf);
-    }
 }

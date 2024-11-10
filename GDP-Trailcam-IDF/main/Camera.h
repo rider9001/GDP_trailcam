@@ -16,6 +16,7 @@
 #include "freertos/timers.h"
 
 #include "SDSPI.h"
+#include "image_types.h"
 
 /// @brief Debugging string tag
 static const char *CAM_TAG = "TrailCamera";
@@ -37,41 +38,6 @@ static const int cam_power_down_pins[] = {CONFIG_PIN_CAM_PWRDN_1, CONFIG_PIN_CAM
 
 /// @brief Target delay in time between the two images in the motion capture
 #define CAM_MOTION_CAPTURE_WAIT_MS 50
-
-/// @brief Struct that contains jpg image buffer data (NOTE: buf must be individually freed)
-typedef struct
-{
-    // Buffer of image data
-    uint8_t* buf;
-
-    // Length of the buffer
-    size_t len;
-
-    // Hieght of the image
-    size_t hieght;
-
-    // Width of the image
-    size_t width;
-} jpg_image_data_t;
-
-/// @brief Struct that contains two jpg image datasets taken a short time apart (NOTE: both img bufs must be individually freed)
-typedef struct
-{
-    // Flag for indicating capture sucsess
-    bool capture_sucsess;
-
-    // First image in the sequence
-    jpg_image_data_t img1;
-
-    // Second image in the sequence
-    jpg_image_data_t img2;
-
-    // ms of end of first capture
-    size_t t1;
-
-    // ms of end of second capture
-    size_t t2;
-} jpg_motion_data_t;
 
 /// ------------------------------------------
 /// @brief Creates a default camera config sturct to use for initializing and deinitializing a camera
@@ -123,7 +89,7 @@ esp_err_t stop_camera(const camera_config_t cam_config);
 /// @param fb frame buffer to extract
 ///
 /// @return structure of image data
-jpg_image_data_t extract_camera_buffer(const camera_fb_t* fb);
+jpg_image_t extract_camera_buffer(const camera_fb_t* fb);
 
 /// ------------------------------------------
 /// @brief Writes the given frame buffer to the given path
@@ -144,7 +110,7 @@ esp_err_t write_fb_to_SD(const char* save_path, const camera_fb_t* fb);
 /// @param jpg_data to write to storage
 ///
 /// @return ESP_OK if sucsessful
-esp_err_t write_jpg_data_to_SD(const char* path, const jpg_image_data_t jpg_data);
+esp_err_t write_jpg_data_to_SD(const char* path, const jpg_image_t jpg_data);
 
 /// ------------------------------------------
 /// @brief Sets all camera image settings to sensible values
@@ -160,11 +126,5 @@ void setup_all_cam_power_down_pins();
 ///
 /// @param config config of the camera to use
 ///
-/// @return struct containing two images, if capture_sucsess is false then capture failed
-jpg_motion_data_t get_motion_capture(camera_config_t config);
-
-/// ------------------------------------------
-/// @brief Frees all buffer data in motion data sturct, checks for null
-///
-/// @param data struct to free
-void free_motion_data(jpg_motion_data_t data);
+/// @return struct containing two images, if data_valid is false then capture failed
+jpg_motion_data_t* get_motion_capture(camera_config_t config);

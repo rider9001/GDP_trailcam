@@ -12,6 +12,7 @@
 
 #include "SDSPI.h"
 #include "Camera.h"
+#include "motion_analysis.h"
 
 static const char *MAIN_TAG = "main";
 
@@ -21,6 +22,7 @@ camera_config_t config;
 #define PIR_PIN 11
 
 QueueHandle_t cam_queue;
+QueueHandle_t motion_proc_queue;
 
 TaskHandle_t PIR_trig_handle = NULL;
 
@@ -43,7 +45,7 @@ static void IRAM_ATTR PIR_hold_state_ISR()
 void PIR_state_latch()
 {
     int pin = cam_power_down_pins[0];
-
+    ESP_LOGI(MAIN_TAG, "Starting PIR state latch task");
     while(1)
     {
         // Wait here for ISR to unpause
@@ -82,6 +84,44 @@ void PIR_state_latch()
     }
 }
 
+void motion_processing_task()
+{
+    ESP_LOGI(MOTION_TAG, "Starting camera proc task");
+    while (1)
+    {
+        jpg_motion_data_t jpg_motion_data;
+        jpg_motion_data.data_valid = false;
+        if (xQueueReceive(motion_proc_queue, &jpg_motion_data, portMAX_DELAY))
+        {
+            if (jpg_motion_data.data_valid  == false)
+            {
+                ESP_LOGW(MOTION_TAG, "Wait timeout, continuing");
+                continue;
+            }
+
+            ESP_LOGI(MOTION_TAG, "Analysing motion on caputre");
+            grayscale_image_t sub_img = perform_motion_analysis(&jpg_motion_data);
+
+            if (sub_img.buf != NULL)
+            {
+                char* sub_filenm = malloc(sizeof(char) * 32);
+                sprintf(sub_filenm, MOUNT_POINT"/sub.bin");
+
+                if (write_data_SDSPI(sub_filenm, sub_img.buf, sub_img.len) != ESP_OK)
+                {
+                    ESP_LOGE(MOTION_TAG, "Failed to write motion to SD");
+                }
+                free(sub_filenm);
+                free(sub_img.buf);
+            }
+            else
+            {
+                ESP_LOGI(MOTION_TAG, "Analysis failed!");
+            }
+        }
+    }
+}
+
 void app_main(void)
 {
     // Most SDSPI functions assume that there exists a working connection already
@@ -116,9 +156,11 @@ void app_main(void)
     }
     ESP_LOGI(MAIN_TAG, "Camera POST sucsess");
 
-    cam_queue = xQueueCreate(10, sizeof(int));
+    cam_queue = xQueueCreate(5, sizeof(int));
+    motion_proc_queue = xQueueCreate(5, sizeof(jpg_motion_data_t));
 
-    xTaskCreate(PIR_state_latch, "PIR_state_latch", 1024 * 16, NULL, 3, &PIR_trig_handle);
+    xTaskCreate(PIR_state_latch, "PIR_state_latch", 1024 * 8, NULL, 3, &PIR_trig_handle);
+    xTaskCreate(motion_processing_task, "Motion processing task", 1024 * 32, &motion_proc_queue, 3, NULL);
     vTaskPrioritySet(NULL, 4);
 
     esp_rom_gpio_pad_select_gpio(PIR_PIN);
@@ -137,23 +179,29 @@ void app_main(void)
         int cam_pwr_pin = -1;
         if (xQueueReceive(cam_queue, &cam_pwr_pin, portMAX_DELAY))
         {
+            if (cam_pwr_pin == -1)
+            {
+                ESP_LOGW(MAIN_TAG, "Wait timeout, continuing");
+                continue;
+            }
+
             ESP_LOGI(MAIN_TAG, "Starting capture on cam_pwr_pin: %i", cam_pwr_pin);
 
             config = get_default_camera_config(cam_pwr_pin);
 
-            jpg_motion_data_t motion = get_motion_capture(config);
+            jpg_motion_data_t* motion = get_motion_capture(config);
 
-            ESP_LOGI(MAIN_TAG, "Time between is: %ums", motion.t2 - motion.t1);
+            ESP_LOGI(MAIN_TAG, "Time between is: %ums", motion->t2 - motion->t1);
 
             char dir[64];
-            sprintf(dir, MOUNT_POINT"/%u", motion.t1);
+            sprintf(dir, MOUNT_POINT"/%u", motion->t1);
 
             if (create_dir_SDSPI(dir) == ESP_OK)
             {
                 char filenm1[FILENAME_MAX_SIZE];
                 sprintf(filenm1, "%s/img1.jpg", dir);
 
-                if (write_jpg_data_to_SD(filenm1, motion.img1) != ESP_OK)
+                if (write_jpg_data_to_SD(filenm1, motion->img1) != ESP_OK)
                 {
                     ESP_LOGE(MAIN_TAG, "Failed to write %s", filenm1);
                 }
@@ -161,7 +209,7 @@ void app_main(void)
                 char filenm2[FILENAME_MAX_SIZE];
                 sprintf(filenm2, "%s/img2.jpg", dir);
 
-                if (write_jpg_data_to_SD(filenm2, motion.img2) != ESP_OK)
+                if (write_jpg_data_to_SD(filenm2, motion->img2) != ESP_OK)
                 {
                     ESP_LOGE(MAIN_TAG, "Failed to write %s", filenm2);
                 }
@@ -171,16 +219,19 @@ void app_main(void)
 
                 char* info_text = malloc(300 * sizeof(char));
                 sprintf(info_text, "Images were taken %ums apart.\nImage 1: %u\nImage 2: %u\n"
-                                   "Image res is %ux%u", motion.t2 - motion.t1,
-                                   motion.t1, motion.t2, motion.img1.width, motion.img1.hieght);
+                                   "Image res is %ux%u", motion->t2 - motion->t1,
+                                   motion->t1, motion->t2, motion->img1.width, motion->img1.height);
                 if (write_text_SDSPI(filenm_info, info_text) != ESP_OK)
                 {
                     ESP_LOGE(MAIN_TAG, "Failed to write %s", filenm_info);
                 }
+                ESP_LOGI(MAIN_TAG, "%s", info_text);
                 free(info_text);
             }
 
-            free_motion_data(motion);
+            // The motion set should be considered transfered to the processing task
+            ESP_LOGI(MAIN_TAG, "Sending capture to motion analysis");
+            xQueueSend(motion_proc_queue, motion, NULL);
         }
     }
 }

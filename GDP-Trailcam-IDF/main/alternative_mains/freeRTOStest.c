@@ -12,6 +12,7 @@
 
 #include "SDSPI.h"
 #include "Camera.h"
+#include "motion_analysis.h"
 
 static const char *MAIN_TAG = "main";
 
@@ -21,6 +22,7 @@ camera_config_t config;
 #define PIR_PIN 11
 
 QueueHandle_t cam_queue;
+QueueHandle_t motion_proc_queue;
 
 TaskHandle_t PIR_trig_handle = NULL;
 
@@ -53,8 +55,9 @@ void PIR_state_latch()
         // when unpaused that means that the PIR has triggered, run camera task
         xQueueSend(cam_queue, &pin, NULL);
 
-        // Wait this task for a few seconds whilst camera task runs to prevent interference
-        vTaskDelay(pdMS_TO_TICKS(10000));
+        // Wait this task for a few seconds whilst camera task runs to prevent
+        // runnning pushing another image capture for the same incident
+        vTaskDelay(pdMS_TO_TICKS(2000));
 
         PIR_active = 1;
         while (PIR_active)
@@ -83,44 +86,50 @@ void PIR_state_latch()
 
 void app_main(void)
 {
-    connection = connect_to_SDSPI(PIN_NUM_MISO, PIN_NUM_MOSI, PIN_NUM_CLK, PIN_NUM_CS);
+    // Most SDSPI functions assume that there exists a working connection already
+    connect_to_SDSPI(PIN_NUM_MISO, PIN_NUM_MOSI, PIN_NUM_CLK, PIN_NUM_CS, &connection);
     if (connection.card == NULL)
     {
         ESP_LOGE(MAIN_TAG, "Failed to start SDSPI");
         return;
     }
 
+    ESP_LOGI(MAIN_TAG, "Running SD SPI POST...");
+    if (SDSPI_POST() != ESP_OK)
+    {
+        ESP_LOGE(MAIN_TAG, "POST failed on a SD SPI");
+        return;
+    }
+    ESP_LOGI(MAIN_TAG, "SD SPI POST sucsess");
+
+
+    ESP_LOGI(MAIN_TAG, "Installing ISR service");
     gpio_install_isr_service(0);
 
     // This should always be run first, sets all power down pins as outputs and shuts down all cameras
+    ESP_LOGI(MAIN_TAG, "Setting up cam power pins");
     setup_all_cam_power_down_pins();
 
-    // ESP_LOGI(MAIN_TAG, "POSTing all cameras");
-    // if (POST_all_cams() != ESP_OK)
-    // {
-    //     ESP_LOGE(MAIN_TAG, "POST failed on a camera");
-    //     return;d
-    // }
-    // ESP_LOGI(MAIN_TAG, "Camera POST sucsess");
+    ESP_LOGI(MAIN_TAG, "POSTing all cameras");
+    if (POST_all_cams() != ESP_OK)
+    {
+        ESP_LOGE(MAIN_TAG, "POST failed on a camera");
+        return;
+    }
+    ESP_LOGI(MAIN_TAG, "Camera POST sucsess");
 
-    // ESP_LOGI(MAIN_TAG, "Running SD SPI POST...");
-    // if (SDSPI_POST() != ESP_OK)
-    // {
-    //     ESP_LOGE(MAIN_TAG, "POST failed on a SD SPI");
-    //     return;
-    // }
-    // ESP_LOGI(MAIN_TAG, "SD SPI POST sucsess");
+    cam_queue = xQueueCreate(10, sizeof(int));
+    motion_proc_queue = xQueueCreate(5, sizeof(jpg_motion_data_t*));
+
+    xTaskCreate(PIR_state_latch, "PIR_state_latch", 1024 * 8, NULL, 3, &PIR_trig_handle);
+    xTaskCreate(motion_processing_task, "Motion processing task", 1024 * 32, NULL, 3, NULL);
+    vTaskPrioritySet(NULL, 4);
 
     esp_rom_gpio_pad_select_gpio(PIR_PIN);
     gpio_set_direction(PIR_PIN, GPIO_MODE_INPUT);
     gpio_pulldown_dis(PIR_PIN);
     gpio_pullup_en(PIR_PIN);
     gpio_set_intr_type(PIR_PIN, GPIO_INTR_LOW_LEVEL);
-
-    cam_queue = xQueueCreate(10, sizeof(int));
-
-    xTaskCreate(PIR_state_latch, "PIR_state_latch", 1024 * 16, NULL, 3, &PIR_trig_handle);
-    vTaskPrioritySet(NULL, 4);
 
     ESP_LOGI(MAIN_TAG, "Waiting for low");
 
@@ -132,65 +141,57 @@ void app_main(void)
         int cam_pwr_pin = -1;
         if (xQueueReceive(cam_queue, &cam_pwr_pin, portMAX_DELAY))
         {
+            if (cam_pwr_pin == -1)
+            {
+                ESP_LOGW(MAIN_TAG, "Wait timeout, continuing");
+                continue;
+            }
+
             ESP_LOGI(MAIN_TAG, "Starting capture on cam_pwr_pin: %i", cam_pwr_pin);
 
             config = get_default_camera_config(cam_pwr_pin);
 
-            jpg_motion_data_t motion_data = get_motion_capture(config);
+            jpg_motion_data_t* motion = get_motion_capture(config);
 
-            if (motion_data.capture_sucsess == true)
+            ESP_LOGI(MAIN_TAG, "Time between is: %ums", motion->t2 - motion->t1);
+
+            char dir[64];
+            sprintf(dir, MOUNT_POINT"/%u", motion->t1);
+
+            if (create_dir_SDSPI(dir) == ESP_OK)
             {
-                if (connection.card == NULL)
+                char filenm1[FILENAME_MAX_SIZE];
+                sprintf(filenm1, "%s/img1.jpg", dir);
+
+                if (write_jpg_data_to_SD(filenm1, motion->img1) != ESP_OK)
                 {
-                    ESP_LOGE(MAIN_TAG, "Failed to start SDSPI");
-                    free_motion_data(motion_data);
-                    continue;
+                    ESP_LOGE(MAIN_TAG, "Failed to write %s", filenm1);
                 }
 
-                char dir[FILENAME_MAX_SIZE];
-                sprintf(dir, MOUNT_POINT"/%u", (size_t) esp_log_timestamp());
-                if (create_dir_SDSPI(dir) != ESP_OK)
+                char filenm2[FILENAME_MAX_SIZE];
+                sprintf(filenm2, "%s/img2.jpg", dir);
+
+                if (write_jpg_data_to_SD(filenm2, motion->img2) != ESP_OK)
                 {
-                    free_motion_data(motion_data);
-                    continue;
+                    ESP_LOGE(MAIN_TAG, "Failed to write %s", filenm2);
                 }
 
-                char motion_filenm1[FILENAME_MAX_SIZE];
-                sprintf(motion_filenm1, "%.16s/img1.jpg", dir);
+                char filenm_info[FILENAME_MAX_SIZE];
+                sprintf(filenm_info, "%s/info.txt", dir);
 
-                if (write_data_SDSPI(motion_filenm1, motion_data.img1.buf, motion_data.img1.len) != ESP_OK)
+                char* info_text = malloc(300 * sizeof(char));
+                sprintf(info_text, "Images were taken %ums apart.\nImage 1: %u\nImage 2: %u\n"
+                                   "Image res is %ux%u", motion->t2 - motion->t1,
+                                   motion->t1, motion->t2, motion->img1.width, motion->img1.height);
+                if (write_text_SDSPI(filenm_info, info_text) != ESP_OK)
                 {
-                    free_motion_data(motion_data);
-                    continue;
+                    ESP_LOGE(MAIN_TAG, "Failed to write %s", filenm_info);
                 }
-
-                char motion_filenm2[FILENAME_MAX_SIZE];
-                sprintf(motion_filenm2, "%.16s/img2.jpg", dir);
-
-                if (write_data_SDSPI(motion_filenm2, motion_data.img2.buf, motion_data.img2.len) != ESP_OK)
-                {
-                    free_motion_data(motion_data);
-                    continue;
-                }
-
-                char info_filenm[FILENAME_MAX_SIZE];
-                sprintf(motion_filenm2, "%.16s/info.txt", dir);
-
-                const char info[FILENAME_MAX_SIZE];
-                sprintf(info, "Images were taken %ums apart", motion_data.ms_between);
-
-                if (write_text_SDSPI(info_filenm, info))
-                {
-                    free_motion_data(motion_data);
-                    continue;
-                }
-
-                free_motion_data(motion_data);
+                free(info_text);
             }
-            else
-            {
-                free_motion_data(motion_data);
-            }
+
+            // The motion set should be considered transfered to the processing task
+            xQueueSend(motion_proc_queue, motion, NULL);
         }
     }
 }

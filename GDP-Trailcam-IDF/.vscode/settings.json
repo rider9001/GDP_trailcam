@@ -34,7 +34,12 @@
         "freertos.h": "c",
         "esp_system.h": "c",
         "esp_camera.h": "c",
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "image_types.h": "c",
+        "motion_analysis.h": "c",
+        "math.h": "c",
+        "queue.h": "c",
+        "task.h": "c"
     },
     "idf.flashType": "UART"
 }

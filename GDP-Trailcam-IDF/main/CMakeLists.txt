@@ -2,6 +2,8 @@ set(srcs
     "main.c"
     "SDSPI.c"
     "Camera.c"
+    "motion_analysis.c"
+    "image_types.c"
     )
 
 idf_component_register(SRCS ${srcs}
