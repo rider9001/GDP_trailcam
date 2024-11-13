@@ -152,6 +152,7 @@ void app_main(void)
     if (POST_all_cams() != ESP_OK)
     {
         ESP_LOGE(MAIN_TAG, "POST failed on a camera");
+        esp_restart();
         return;
     }
     ESP_LOGI(MAIN_TAG, "Camera POST sucsess");
@@ -160,7 +161,7 @@ void app_main(void)
     motion_proc_queue = xQueueCreate(5, sizeof(jpg_motion_data_t));
 
     xTaskCreate(PIR_state_latch, "PIR_state_latch", 1024 * 8, NULL, 3, &PIR_trig_handle);
-    xTaskCreate(motion_processing_task, "Motion processing task", 1024 * 32, &motion_proc_queue, 3, NULL);
+    xTaskCreate(motion_processing_task, "Motion processing task", 1024 * 16, &motion_proc_queue, 3, NULL);
     vTaskPrioritySet(NULL, 4);
 
     esp_rom_gpio_pad_select_gpio(PIR_PIN);

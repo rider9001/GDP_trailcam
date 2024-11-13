@@ -72,6 +72,9 @@ void connect_to_SDSPI(const int miso,
     // Connection sucsessful, set connection data
     connection->host = host;
     connection->card = card;
+
+    // setup SD acsess mutex
+    SD_SPI_Mutex = xSemaphoreCreateMutex();
 }
 
 ///--------------------------------------------------------
@@ -153,15 +156,25 @@ esp_err_t SDSPI_POST()
 ///--------------------------------------------------------
 esp_err_t write_data_SDSPI(const char* path, const void* data, const size_t len)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(SDSPI_TAG, "Opening file %s", path);
     FILE *f = fopen(path, "wb");
     if (f == NULL) {
+        xSemaphoreGive(SD_SPI_Mutex);
         ESP_LOGE(SDSPI_TAG, "Failed to open file for writing, errno: %d", errno);
         return ESP_FAIL;
     }
 
     size_t write_bytes = fwrite(data, 1, len, f);
     fclose(f);
+
+    xSemaphoreGive(SD_SPI_Mutex);
+
     if (write_bytes != 0)
     {
         ESP_LOGI(SDSPI_TAG, "File written, %u bytes", write_bytes);
@@ -177,10 +190,17 @@ esp_err_t write_data_SDSPI(const char* path, const void* data, const size_t len)
 ///--------------------------------------------------------
 esp_err_t write_text_SDSPI(const char* path, const char* text)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(SDSPI_TAG, "Opening file %s", path);
     // Append file if existing, create if not
     FILE *f = fopen(path, "a");
     if (f == NULL) {
+        xSemaphoreGive(SD_SPI_Mutex);
         ESP_LOGE(SDSPI_TAG, "Failed to open file for writing, errno: %d", errno);
         return ESP_FAIL;
     }
@@ -188,6 +208,9 @@ esp_err_t write_text_SDSPI(const char* path, const char* text)
     ESP_LOGI(SDSPI_TAG, "String is %u chars", strlen(text));
     size_t write_chars = fwrite(text, sizeof(char), strlen(text), f);
     fclose(f);
+
+    xSemaphoreGive(SD_SPI_Mutex);
+
     if (write_chars != 0)
     {
         ESP_LOGI(SDSPI_TAG, "File written, %u chars", write_chars);
@@ -205,26 +228,42 @@ esp_err_t write_text_SDSPI(const char* path, const char* text)
 ///--------------------------------------------------------
 esp_err_t read_data_SDSPI(const char* path, void* out_buf, const size_t len)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(SDSPI_TAG, "Opening file %s", path);
     FILE *f = fopen(path, "r");
     if (f == NULL) {
+        xSemaphoreGive(SD_SPI_Mutex);
         ESP_LOGE(SDSPI_TAG, "Failed to open file for reading, errno: %d", errno);
         return ESP_FAIL;
     }
 
     size_t read_bytes = fread(out_buf, 1, len, f);
     fclose(f);
-    ESP_LOGI(SDSPI_TAG, "File read, %u bytes", read_bytes);
 
+    xSemaphoreGive(SD_SPI_Mutex);
+
+    ESP_LOGI(SDSPI_TAG, "File read, %u bytes", read_bytes);
     return ESP_OK;
 }
 
 ///--------------------------------------------------------
 esp_err_t read_text_SDSPI(const char* path, char* out_text, const size_t len)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(SDSPI_TAG, "Opening file %s", path);
     FILE *f = fopen(path, "r");
     if (f == NULL) {
+        xSemaphoreGive(SD_SPI_Mutex);
         ESP_LOGE(SDSPI_TAG, "Failed to open file for reading, errno: %d", errno);
         return ESP_FAIL;
     }
@@ -236,6 +275,9 @@ esp_err_t read_text_SDSPI(const char* path, char* out_text, const size_t len)
     }
 
     fclose(f);
+
+    xSemaphoreGive(SD_SPI_Mutex);
+
     ESP_LOGI(SDSPI_TAG, "File read, %u chars", len);
     return ESP_OK;
 }
@@ -243,9 +285,18 @@ esp_err_t read_text_SDSPI(const char* path, char* out_text, const size_t len)
 ///--------------------------------------------------------
 long fsize_SDSPI(const char* path)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return -1;
+    }
+
     struct stat sb;
 
-    if (stat(path, &sb) == 0) {
+    int ret = stat(path, &sb);
+    xSemaphoreGive(SD_SPI_Mutex);
+
+    if (ret == 0) {
         ESP_LOGI(SDSPI_TAG, "Size of %s is %ld bytes", path, sb.st_size);
         return sb.st_size;
     } else {
@@ -257,9 +308,18 @@ long fsize_SDSPI(const char* path)
 ///--------------------------------------------------------
 esp_err_t delete_file_SDSPI(const char* path)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(SDSPI_TAG, "Deleting file %s", path);
 
-    if (remove(path) == 0)
+    int ret = remove(path);
+    xSemaphoreGive(SD_SPI_Mutex);
+
+    if (ret == 0)
     {
         ESP_LOGI(SDSPI_TAG, "File deleted");
         return ESP_OK;
@@ -274,10 +334,18 @@ esp_err_t delete_file_SDSPI(const char* path)
 ///--------------------------------------------------------
 bool check_dir_SDSPI(const char* path)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(SDSPI_TAG, "Checking existence of dir %s", path);
     DIR* dir = opendir(path);
     bool readable = dir != NULL;
     closedir(dir);
+
+    xSemaphoreGive(SD_SPI_Mutex);
 
     if (readable)
     {
@@ -294,9 +362,19 @@ bool check_dir_SDSPI(const char* path)
 ///--------------------------------------------------------
 esp_err_t create_dir_SDSPI(const char* path)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return ESP_FAIL;
+    }
+
+
     ESP_LOGI(SDSPI_TAG, "Creating directory %s", path);
     errno = 0;
-    if (mkdir(path, S_IRWXU) == 0)
+    int ret = mkdir(path, S_IRWXU);
+    xSemaphoreGive(SD_SPI_Mutex);
+
+    if (ret == 0)
     {
         ESP_LOGI(SDSPI_TAG, "Directory created sucsessfully");
         return ESP_OK;
@@ -319,8 +397,17 @@ esp_err_t create_dir_SDSPI(const char* path)
 ///--------------------------------------------------------
 esp_err_t delete_dir_SDSPI(const char* path)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(SDSPI_TAG, "Deleting directory %s", path);
-    if (rmdir(path) != 0)
+    int ret = rmdir(path);
+    xSemaphoreGive(SD_SPI_Mutex);
+
+    if (ret != 0)
     {
         if (errno == ENOTDIR)
         {
@@ -341,6 +428,12 @@ esp_err_t delete_dir_SDSPI(const char* path)
 ///--------------------------------------------------------
 void get_filenm_in_dir_SDSPI(const char* path, const size_t dir_num, char* name_out)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(SDSPI_TAG, "Getting file %u from dir %s", dir_num, path);
 
     DIR* dir = opendir(path);
@@ -371,6 +464,8 @@ void get_filenm_in_dir_SDSPI(const char* path, const size_t dir_num, char* name_
     }
 
     closedir(dir);
+    xSemaphoreGive(SD_SPI_Mutex);
+
     if (nth_entry == NULL)
     {
         ESP_LOGI(SDSPI_TAG, "File %u not found", dir_num);
@@ -386,11 +481,18 @@ void get_filenm_in_dir_SDSPI(const char* path, const size_t dir_num, char* name_
 ///--------------------------------------------------------
 void print_dir_content_in_info_SDSPI(const char* path)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(SDSPI_TAG, "Reading dir contents %s", path);
 
     DIR* dir = opendir(path);
     if (dir == NULL)
     {
+        xSemaphoreGive(SD_SPI_Mutex);
         ESP_LOGE(SDSPI_TAG, "Failed to open directory, errno: %d", errno);
         return;
     }
@@ -403,21 +505,32 @@ void print_dir_content_in_info_SDSPI(const char* path)
     }
 
     closedir(dir);
+    xSemaphoreGive(SD_SPI_Mutex);
 }
 
 ///--------------------------------------------------------
 bool check_file_SDSPI(const char* path)
 {
+    if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
+    {
+        ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(SDSPI_TAG, "Checking %s", path);
 
     FILE* f = fopen(path, "r");
     if (f == NULL)
     {
+        xSemaphoreGive(SD_SPI_Mutex);
         ESP_LOGW(SDSPI_TAG, "Failed to open %s, errno: %d", path, errno);
         return false;
     }
 
-    ESP_LOGI(SDSPI_TAG, "Found %s", path);
+
     fclose(f);
+    xSemaphoreGive(SD_SPI_Mutex);
+
+    ESP_LOGI(SDSPI_TAG, "Found %s", path);
     return true;
 }

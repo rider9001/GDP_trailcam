@@ -22,6 +22,12 @@
 #include "esp_mac.h"
 #include "esp_log.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/timers.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "driver/gpio.h"
+
 /// @brief MISO pin definition
 #define PIN_NUM_MISO  CONFIG_PIN_SPI_MISO
 
@@ -37,6 +43,8 @@
 /// @brief Mount point for the sdcard, must be prefixed to all filepaths
 #define MOUNT_POINT "/sdcard"
 
+/// @brief Maximum wait allowed for using SD SPI functions
+#define MAX_SD_WAIT_MS 5000
 
 /// README: Any static buffer above this value tends to result in a range of errors, use malloc if needed
 /// @brief Max length allowed for a filename under unix
@@ -52,6 +60,8 @@ typedef struct {
     // SD/MMC Host description
     sdmmc_host_t host;
 } SDSPI_connection_t;
+
+SemaphoreHandle_t SD_SPI_Mutex;
 
 ///--------------------------------------------------------
 /// @brief Creates a new connection to the SD SPI card module using
