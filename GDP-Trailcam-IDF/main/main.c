@@ -13,8 +13,9 @@
 #include "SDSPI.h"
 #include "Camera.h"
 #include "motion_analysis.h"
+#include "image_cropping.h"
 
-static const char *MAIN_TAG = "main";
+static const char* MAIN_TAG = "main";
 
 SDSPI_connection_t connection;
 camera_config_t config;
@@ -112,6 +113,21 @@ void motion_processing_task()
                     ESP_LOGE(MOTION_TAG, "Failed to write motion to SD");
                 }
                 free(sub_filenm);
+
+                point_t bb_origin;
+                ESP_LOGI(MAIN_TAG, "Attempting to find centre of motion");
+                if (find_motion_centre(&sub_img, &bb_origin))
+                {
+                    ESP_LOGI(MOTION_TAG, "Motion bounding box from (%u,%u) to (%u,%u)",
+                            bb_origin.x,
+                            bb_origin.y,
+                            bb_origin.x+BOUNDING_BOX_EDGE_LEN,
+                            bb_origin.y+BOUNDING_BOX_EDGE_LEN);
+                }
+                else
+                {
+                    ESP_LOGI(MAIN_TAG, "Image not motion significant");
+                }
                 free(sub_img.buf);
             }
             else

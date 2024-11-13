@@ -129,9 +129,10 @@ bool jpg2rgb565(const uint8_t *src, size_t src_len, uint8_t * out, jpg_scale_t s
 /// @param src source buffer
 /// @param src_len length of source buffer
 /// @param out output grayscale buffer
+/// @param scale to decode jpg at
 ///
 /// @return sucsess bool
-bool jpg2grayscale(const uint8_t* src, size_t src_len, uint8_t* out);
+bool jpg2grayscale(const uint8_t* src, size_t src_len, uint8_t* out, jpg_scale_t scale);
 
 #ifdef __cplusplus
 }

@@ -18,7 +18,7 @@ grayscale_image_t convert_jpg_to_grayscale(const jpg_image_t* jpg_image)
     gray_image.buf = malloc(gray_image.len);
 
     ESP_LOGI(MOTION_TAG, "Converting jpg to grayscale");
-    if (jpg2grayscale(jpg_image->buf, jpg_image->len, gray_image.buf) == false)
+    if (jpg2grayscale(jpg_image->buf, jpg_image->len, gray_image.buf, JPG_SCALE_NONE) == false)
     {
         ESP_LOGE(MOTION_TAG, "Conversion from jpg to grayscale failed!");
         free(gray_image.buf);
@@ -43,13 +43,6 @@ grayscale_motion_data_t convert_jpg_motion_to_grayscale(const jpg_motion_data_t*
         return gray_motion;
     }
 
-    char * img1_filenm = malloc(sizeof(char) * 64);
-    sprintf(img1_filenm, MOUNT_POINT"/gray1.bin");
-    if (write_data_SDSPI(img1_filenm, img1.buf, img1.len) != ESP_OK)
-    {
-        ESP_LOGE(MOTION_TAG, "Writing img 1 failed");
-    }
-    free(img1_filenm);
 
     ESP_LOGI(MOTION_TAG, "Converting img 2");
     grayscale_image_t img2 = convert_jpg_to_grayscale(&jpg_motion->img2);

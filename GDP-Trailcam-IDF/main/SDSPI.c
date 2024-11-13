@@ -6,7 +6,8 @@
 
 #include "SDSPI.h"
 
-static const char *SDSPI_TAG = "SDSPI";
+/// @brief Semaphore that holds a mutex, controlling read/write acsess to the SD card
+SemaphoreHandle_t SD_SPI_Mutex;
 
 ///--------------------------------------------------------
 void connect_to_SDSPI(const int miso,
@@ -431,7 +432,6 @@ void get_filenm_in_dir_SDSPI(const char* path, const size_t dir_num, char* name_
     if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
     {
         ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
-        return ESP_FAIL;
     }
 
     ESP_LOGI(SDSPI_TAG, "Getting file %u from dir %s", dir_num, path);
@@ -484,7 +484,6 @@ void print_dir_content_in_info_SDSPI(const char* path)
     if (!xSemaphoreTake(SD_SPI_Mutex, pdMS_TO_TICKS(MAX_SD_WAIT_MS)))
     {
         ESP_LOGE(SDSPI_TAG, "Unable to grab SD mutex!");
-        return ESP_FAIL;
     }
 
     ESP_LOGI(SDSPI_TAG, "Reading dir contents %s", path);

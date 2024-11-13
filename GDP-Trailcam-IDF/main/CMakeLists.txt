@@ -4,6 +4,7 @@ set(srcs
     "Camera.c"
     "motion_analysis.c"
     "image_types.c"
+    "image_cropping.c"
     )
 
 idf_component_register(SRCS ${srcs}

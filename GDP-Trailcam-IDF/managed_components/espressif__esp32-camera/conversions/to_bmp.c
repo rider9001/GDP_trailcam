@@ -253,7 +253,7 @@ bool jpg2rgb565(const uint8_t *src, size_t src_len, uint8_t * out, jpg_scale_t s
 }
 
 // User created converter from jpg to grayscale
-bool jpg2grayscale(const uint8_t* src, size_t src_len, uint8_t* out)
+bool jpg2grayscale(const uint8_t* src, size_t src_len, uint8_t* out, jpg_scale_t scale)
 {
     rgb_jpg_decoder jpeg;
     jpeg.width = 0;
@@ -262,7 +262,7 @@ bool jpg2grayscale(const uint8_t* src, size_t src_len, uint8_t* out)
     jpeg.output = out;
     jpeg.data_offset = 0;
 
-    if(esp_jpg_decode(src_len, JPG_SCALE_NONE, _jpg_read, _grayscale_write, (void*)&jpeg) != ESP_OK){
+    if(esp_jpg_decode(src_len, scale, _jpg_read, _grayscale_write, (void*)&jpeg) != ESP_OK){
         return false;
     }
     return true;

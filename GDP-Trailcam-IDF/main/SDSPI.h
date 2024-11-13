@@ -61,7 +61,8 @@ typedef struct {
     sdmmc_host_t host;
 } SDSPI_connection_t;
 
-SemaphoreHandle_t SD_SPI_Mutex;
+/// @brief Debugging string tag
+static const char *SDSPI_TAG = "SDSPI";
 
 ///--------------------------------------------------------
 /// @brief Creates a new connection to the SD SPI card module using

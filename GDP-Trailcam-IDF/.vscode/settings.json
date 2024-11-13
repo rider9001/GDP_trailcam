@@ -40,7 +40,8 @@
         "math.h": "c",
         "queue.h": "c",
         "task.h": "c",
-        "list": "c"
+        "list": "c",
+        "yuv.h": "c"
     },
     "idf.flashType": "UART"
 }
