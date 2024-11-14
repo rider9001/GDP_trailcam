@@ -9,6 +9,9 @@
 /// @brief Semaphore that holds a mutex, controlling read/write acsess to the SD card
 SemaphoreHandle_t SD_SPI_Mutex;
 
+/// @brief Debugging string tag
+static const char *SDSPI_TAG = "SDSPI";
+
 ///--------------------------------------------------------
 void connect_to_SDSPI(const int miso,
                       const int mosi,

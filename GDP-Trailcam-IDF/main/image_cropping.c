@@ -7,6 +7,9 @@
 
 #include "image_cropping.h"
 
+/// @brief Logging tag
+const static char* CROP_TAG = "image_cropping";
+
 /// ------------------------------------------
 point_t map_bufidx_to_pixel(size_t bufidx, size_t img_width, size_t bytes_per_pixel)
 {

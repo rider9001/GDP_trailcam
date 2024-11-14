@@ -61,9 +61,6 @@ typedef struct {
     sdmmc_host_t host;
 } SDSPI_connection_t;
 
-/// @brief Debugging string tag
-static const char *SDSPI_TAG = "SDSPI";
-
 ///--------------------------------------------------------
 /// @brief Creates a new connection to the SD SPI card module using
 /// the given GPIO pins. Once complete the read/write functions should

@@ -23,8 +23,6 @@
 /// @brief Number of an images pixels required to be above motion threshold to count as a relevant image
 #define MOTION_PIX_REQ 8500
 
-const static char* CROP_TAG = "image_cropping";
-
 /// @brief Struct for storing a point in an image, assumed origin is (0,0) -> (w-1,h-1)
 /// where w is image width and h is image height
 typedef struct

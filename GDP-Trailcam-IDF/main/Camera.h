@@ -18,9 +18,6 @@
 #include "SDSPI.h"
 #include "image_types.h"
 
-/// @brief Debugging string tag
-static const char* CAM_TAG = "TrailCamera";
-
 /// @brief List of powerdown pins for all attached cameras
 static const int cam_power_down_pins[] = {CONFIG_PIN_CAM_PWRDN_1, CONFIG_PIN_CAM_PWRDN_2, CONFIG_PIN_CAM_PWRDN_3, CONFIG_PIN_CAM_PWRDN_4};
 

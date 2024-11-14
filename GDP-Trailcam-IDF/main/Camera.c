@@ -6,6 +6,9 @@
 
 #include "Camera.h"
 
+/// @brief Debugging string tag
+static const char* CAM_TAG = "TrailCamera";
+
 /// ------------------------------------------
 camera_config_t get_default_camera_config(const uint32_t power_down_pin)
 {
