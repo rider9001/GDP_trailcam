@@ -30,14 +30,9 @@ size_t map_pixel_to_bufidx(point_t pixel, size_t img_width, size_t bytes_per_pix
 }
 
 /// ------------------------------------------
-bool find_motion_centre(const grayscale_image_t* motion_img, point_t* outPoint)
+bool find_motion_centre(grayscale_image_t* motion_img, point_t* outPoint)
 {
-    uint32_t pixel_avg = 0;
-    for (size_t i = 0; i < motion_img->len; i++)
-    {
-        pixel_avg += motion_img->buf[i];
-    }
-    pixel_avg /= motion_img->len;
+    quantize_motion_img(motion_img);
 
     uint32_t x_sum = 0;
     uint32_t y_sum = 0;
@@ -46,7 +41,7 @@ bool find_motion_centre(const grayscale_image_t* motion_img, point_t* outPoint)
     // Sum the x/y coords of all pixels which meet threshold
     for (size_t i = 0; i < motion_img->len; i++)
     {
-        if (motion_img->buf[i] >= pixel_avg + MOTION_PIX_THRES_ABV_AVG)
+        if (motion_img->buf[i] == 0xff)
         {
             point_t point = map_bufidx_to_pixel(i, motion_img->width, 1);
             x_sum += point.x;
@@ -81,4 +76,70 @@ bool find_motion_centre(const grayscale_image_t* motion_img, point_t* outPoint)
 
     ESP_LOGI(CROP_TAG, "Image motion signficant");
     return true;
+}
+
+/// ------------------------------------------
+void quantize_motion_img(grayscale_image_t* motion_img)
+{
+    uint32_t pixel_avg = 0;
+    for (size_t i = 0; i < motion_img->len; i++)
+    {
+        pixel_avg += motion_img->buf[i];
+    }
+    pixel_avg /= motion_img->len;
+
+    for (size_t i = 0; i < motion_img->len; i++)
+    {
+        if (motion_img->buf[i] >= pixel_avg + MOTION_PIX_THRES_ABV_AVG)
+        {
+            motion_img->buf[i] = 0xff;
+        }
+        else
+        {
+            motion_img->buf[i] = 0;
+        }
+    }
+}
+
+/// ------------------------------------------
+void draw_motion_box(grayscale_image_t* motion_img, point_t box_origin)
+{
+    size_t y = box_origin.y;
+    for (size_t x = box_origin.x; x <= box_origin.x + BOUNDING_BOX_EDGE_LEN; x++)
+    {
+        point_t point;
+        point.x = x;
+        point.y = y;
+        motion_img->buf[map_pixel_to_bufidx(point, motion_img->width, 1)] = 0xff;
+    }
+
+    // Bottom edge
+    y = box_origin.y + BOUNDING_BOX_EDGE_LEN;
+    for (size_t x = box_origin.x; x <= box_origin.x + BOUNDING_BOX_EDGE_LEN; x++)
+    {
+        point_t point;
+        point.x = x;
+        point.y = y;
+        motion_img->buf[map_pixel_to_bufidx(point, motion_img->width, 1)] = 0xff;
+    }
+
+    // Left edge
+    size_t x = box_origin.x;
+    for (y = box_origin.y; y <= box_origin.y + BOUNDING_BOX_EDGE_LEN; y++)
+    {
+        point_t point;
+        point.x = x;
+        point.y = y;
+        motion_img->buf[map_pixel_to_bufidx(point, motion_img->width, 1)] = 0xff;
+    }
+
+    // Right edge
+    x = box_origin.x + BOUNDING_BOX_EDGE_LEN;
+    for (y = box_origin.y; y <= box_origin.y + BOUNDING_BOX_EDGE_LEN; y++)
+    {
+        point_t point;
+        point.x = x;
+        point.y = y;
+        motion_img->buf[map_pixel_to_bufidx(point, motion_img->width, 1)] = 0xff;
+    }
 }

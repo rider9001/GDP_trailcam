@@ -123,6 +123,16 @@ void motion_processing_task()
                             bb_origin.y,
                             bb_origin.x+BOUNDING_BOX_EDGE_LEN,
                             bb_origin.y+BOUNDING_BOX_EDGE_LEN);
+
+                    draw_motion_box(&sub_img, bb_origin);
+
+                    char* box_filenm = malloc(sizeof(char) * 32);
+                    sprintf(box_filenm, MOUNT_POINT"/box.bin");
+                    if (write_data_SDSPI(box_filenm, sub_img.buf, sub_img.len) != ESP_OK)
+                    {
+                        ESP_LOGE(MOTION_TAG, "Failed to write bounding box to SD");
+                    }
+                    free(box_filenm);
                 }
                 else
                 {

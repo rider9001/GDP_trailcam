@@ -18,10 +18,10 @@
 #define BOUNDING_BOX_EDGE_LEN 640
 
 /// @brief Minimum value a pixel must be above the average to be counted as a motion pixel
-#define MOTION_PIX_THRES_ABV_AVG 30
+#define MOTION_PIX_THRES_ABV_AVG 35
 
 /// @brief Number of an images pixels required to be above motion threshold to count as a relevant image
-#define MOTION_PIX_REQ 8500
+#define MOTION_PIX_REQ 8000
 
 /// @brief Struct for storing a point in an image, assumed origin is (0,0) -> (w-1,h-1)
 /// where w is image width and h is image height
@@ -62,7 +62,7 @@ size_t map_pixel_to_bufidx(point_t pixel, size_t img_width, size_t bytes_per_pix
 
 /// ------------------------------------------
 /// @brief Using the threshold values, determines if a motion image has significant motion
-/// and what the x/y origins of a 640x640 bounding box should be
+/// and what the x/y origins of the BOUNDING_BOX_EDGE_LEN x BOUNDING_BOX_EDGE_LEN bounding box should be
 ///
 /// @note The returned coords will be clipped to not lead to a bounding box outside of the coord space
 /// of the input image
@@ -71,4 +71,19 @@ size_t map_pixel_to_bufidx(point_t pixel, size_t img_width, size_t bytes_per_pix
 /// @param[out] outPoint origin for the bounding box, invalid if return is false
 ///
 /// @return does this image contain significant motion?
-bool find_motion_centre(const grayscale_image_t* motion_img, point_t* outPoint);
+bool find_motion_centre(grayscale_image_t* motion_img, point_t* outPoint);
+
+/// ------------------------------------------
+/// @brief Draw the square bounding box onto the grayscale image using white pixels
+///
+/// @note Draws a box from box_origin -> box_origin + BOUNDING_BOX_EDGE_LEN
+///
+/// @param motion_img grayscale image to draw bounding box onto
+/// @param box_origin point origin of the BOUNDING_BOX_EDGE_LEN square
+void draw_motion_box(grayscale_image_t* motion_img, point_t box_origin);
+
+/// ------------------------------------------
+/// @brief Quantizes the input image based on wether a given pixel passes motion tests
+///
+/// @param motion_img input image
+void quantize_motion_img(grayscale_image_t* motion_img);

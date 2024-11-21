@@ -10,7 +10,7 @@
     "idf.openOcdConfigs": [
         "board/esp32-wrover-kit-3.3v.cfg"
     ],
-    "idf.port": "/dev/ttyUSB0",
+    "idf.port": "/dev/ttyACM0",
     "idf.pythonBinPath": "/home/edward/esp/idf-tools/python_env/idf5.3_py3.10_env/bin/python",
     "idf.toolsPath": "/home/edward/esp/idf-tools",
     "files.associations": {
