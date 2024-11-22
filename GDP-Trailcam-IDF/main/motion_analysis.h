@@ -19,8 +19,6 @@
 #include "Camera.h"
 #include "image_types.h"
 
-static const char* MOTION_TAG = "motion_analysis";
-
 /// ------------------------------------------
 /// @brief Generates a grayscale image from an input jpg
 ///
@@ -53,4 +51,4 @@ grayscale_image_t motion_image_subtract(const grayscale_motion_data_t* motion_se
 /// @param motion_set input jpg motion set
 ///
 /// @return subtracted grayscale image
-grayscale_image_t perform_motion_analysis(jpg_motion_data_t* motion_set);
+grayscale_image_t perform_motion_analysis(const jpg_motion_data_t* motion_set);

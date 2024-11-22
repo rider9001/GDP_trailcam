@@ -87,7 +87,7 @@ void PIR_state_latch()
 
 void motion_processing_task()
 {
-    ESP_LOGI(MOTION_TAG, "Starting camera proc task");
+    ESP_LOGI(MAIN_TAG, "Starting camera proc task");
     while (1)
     {
         jpg_motion_data_t jpg_motion_data;
@@ -96,21 +96,23 @@ void motion_processing_task()
         {
             if (jpg_motion_data.data_valid  == false)
             {
-                ESP_LOGW(MOTION_TAG, "Wait timeout, continuing");
+                ESP_LOGW(MAIN_TAG, "Wait timeout, continuing");
                 continue;
             }
 
-            ESP_LOGI(MOTION_TAG, "Analysing motion on caputre");
+            size_t motion_t1 = jpg_motion_data.t1;
+
+            ESP_LOGI(MAIN_TAG, "Analysing motion on caputre");
             grayscale_image_t sub_img = perform_motion_analysis(&jpg_motion_data);
 
             if (sub_img.buf != NULL)
             {
-                char* sub_filenm = malloc(sizeof(char) * 32);
-                sprintf(sub_filenm, MOUNT_POINT"/sub.bin");
+                char* sub_filenm = malloc(32);
+                sprintf(sub_filenm, MOUNT_POINT"/%u/sub.bin", motion_t1);
 
                 if (write_data_SDSPI(sub_filenm, sub_img.buf, sub_img.len) != ESP_OK)
                 {
-                    ESP_LOGE(MOTION_TAG, "Failed to write motion to SD");
+                    ESP_LOGE(MAIN_TAG, "Failed to write motion to SD");
                 }
                 free(sub_filenm);
 
@@ -118,7 +120,7 @@ void motion_processing_task()
                 ESP_LOGI(MAIN_TAG, "Attempting to find centre of motion");
                 if (find_motion_centre(&sub_img, &bb_origin))
                 {
-                    ESP_LOGI(MOTION_TAG, "Motion bounding box from (%u,%u) to (%u,%u)",
+                    ESP_LOGI(MAIN_TAG, "Motion bounding box from (%u,%u) to (%u,%u)",
                             bb_origin.x,
                             bb_origin.y,
                             bb_origin.x+BOUNDING_BOX_EDGE_LEN,
@@ -127,12 +129,32 @@ void motion_processing_task()
                     draw_motion_box(&sub_img, bb_origin);
 
                     char* box_filenm = malloc(sizeof(char) * 32);
-                    sprintf(box_filenm, MOUNT_POINT"/box.bin");
+                    sprintf(box_filenm, MOUNT_POINT"/%u/box.bin", motion_t1);
                     if (write_data_SDSPI(box_filenm, sub_img.buf, sub_img.len) != ESP_OK)
                     {
-                        ESP_LOGE(MOTION_TAG, "Failed to write bounding box to SD");
+                        ESP_LOGE(MAIN_TAG, "Failed to write bounding box to SD");
                     }
                     free(box_filenm);
+
+                    ESP_LOGI(MAIN_TAG, "Cropping jpg image");
+                    jpg_image_t box_img = crop_jpg_img(&jpg_motion_data.img1, bb_origin);
+                    free_jpg_motion_data(&jpg_motion_data);
+
+                    if (box_img.buf == NULL)
+                    {
+                        ESP_LOGE(MAIN_TAG, "Image cropping failed");
+                    }
+                    else
+                    {
+                        char* box_img_filenm = malloc(64);
+                        sprintf(box_img_filenm, MOUNT_POINT"/%u/box.jpg", jpg_motion_data.t1);
+
+                        if (write_data_SDSPI(box_img_filenm, box_img.buf, box_img.len) != ESP_OK)
+                        {
+                            ESP_LOGE(MAIN_TAG, "Failed to write cropped img to SD");
+                        }
+                        free(box_img_filenm);
+                    }
                 }
                 else
                 {
@@ -142,7 +164,7 @@ void motion_processing_task()
             }
             else
             {
-                ESP_LOGI(MOTION_TAG, "Analysis failed!");
+                ESP_LOGI(MAIN_TAG, "Analysis failed!");
             }
         }
     }
@@ -220,7 +242,7 @@ void app_main(void)
 
             ESP_LOGI(MAIN_TAG, "Time between is: %ums", motion->t2 - motion->t1);
 
-            char dir[64];
+            char dir[32];
             sprintf(dir, MOUNT_POINT"/%u", motion->t1);
 
             if (create_dir_SDSPI(dir) == ESP_OK)
@@ -248,11 +270,12 @@ void app_main(void)
                 sprintf(info_text, "Images were taken %ums apart.\nImage 1: %u\nImage 2: %u\n"
                                    "Image res is %ux%u", motion->t2 - motion->t1,
                                    motion->t1, motion->t2, motion->img1.width, motion->img1.height);
+                ESP_LOGI(MAIN_TAG, "%s", info_text);
+
                 if (write_text_SDSPI(filenm_info, info_text) != ESP_OK)
                 {
                     ESP_LOGE(MAIN_TAG, "Failed to write %s", filenm_info);
                 }
-                ESP_LOGI(MAIN_TAG, "%s", info_text);
                 free(info_text);
             }
 

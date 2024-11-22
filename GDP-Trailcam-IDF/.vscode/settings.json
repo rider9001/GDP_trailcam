@@ -41,7 +41,13 @@
         "queue.h": "c",
         "task.h": "c",
         "list": "c",
-        "yuv.h": "c"
+        "yuv.h": "c",
+        "sdkconfig.h": "c",
+        "efuse_reg.h": "c",
+        "img_converters.h": "c",
+        "string.h": "c",
+        "stddef.h": "c",
+        "esp_jpg_decode.h": "c"
     },
     "idf.flashType": "UART"
 }

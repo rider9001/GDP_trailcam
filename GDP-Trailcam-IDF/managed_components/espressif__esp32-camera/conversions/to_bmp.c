@@ -192,14 +192,14 @@ static bool _grayscale_write(void * arg, uint16_t x, uint16_t y, uint16_t w, uin
     size_t b = t + (h * jw); // end byte?
     size_t l = x; // x offset of source?
     uint8_t *out = jpeg->output+jpeg->data_offset; // output buffer start
-    uint8_t *o = out; // output buffer
-    size_t iy, iy2, ix, ix2; // indexes for x,y locations on source and output
+    uint8_t *o = out; // output buffer copy, o is incremented to the start of the current row
+    size_t iy, ix, iy2, ix2; // indexes for x,y pixel locations on source and output respectively
 
     w = w * 3; // byte width of source?
 
     for(iy=t, iy2=t2; iy<b; iy+=jw, iy2+=jw2) {
         o = out+iy2+l;
-        for(ix2=ix=0; ix<w; ix+= 3, ix2++) {
+        for(ix2=ix=0; ix<w; ix+=3, ix2++) {
             uint16_t r = data[ix];
             uint16_t g = data[ix+1];
             uint16_t b = data[ix+2];
@@ -211,6 +211,54 @@ static bool _grayscale_write(void * arg, uint16_t x, uint16_t y, uint16_t w, uin
     }
     return true;
 }
+
+// User created rgb888 cropped writer
+static bool _rgb_cropped_write(void * arg, uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t *data, size_t crop_x_start, size_t crop_y_start, size_t crop_box_len)
+{
+    rgb_jpg_decoder * jpeg = (rgb_jpg_decoder *)arg;
+    if(!data){
+        if(x == 0 && y == 0){
+            //write start
+            jpeg->width = w;
+            jpeg->height = h;
+            //if output is null, this is BMP
+            if(!jpeg->output){
+                jpeg->output = (uint8_t *)_malloc((w*h*3)+jpeg->data_offset);
+                if(!jpeg->output){
+                    return false;
+                }
+            }
+        } else {
+            //write end
+        }
+        return true;
+    }
+
+    size_t jw = jpeg->width*3;
+    size_t jw2 = crop_box_len * 3;
+    size_t t = y * jw;
+    size_t t2 = y * jw2;
+    size_t b = t + ( (crop_y_start+crop_box_len) * jw);
+    size_t l = crop_box_len * 3;
+    uint8_t *out = jpeg->output+jpeg->data_offset;
+    uint8_t *o = out;
+    size_t iy, iy2, ix, ix2;
+
+    w = w * 3;
+    size_t crop_w = (crop_x_start + crop_box_len) * 3;
+
+    for(iy=t, iy2=t2; iy<b; iy+=jw, iy2+=jw2) {
+        o = out+iy2+l;
+        for(ix2=0, ix=crop_x_start*3; ix<crop_w; ix+=3, ix2+=3) {
+            o[ix2] = data[ix+2];
+            o[ix2+1] = data[ix+1];
+            o[ix2+2] = data[ix];
+        }
+        data+=w;
+    }
+    return true;
+}
+
 
 //input buffer
 static unsigned int _jpg_read(void * arg, size_t index, uint8_t *buf, size_t len)
@@ -263,6 +311,22 @@ bool jpg2grayscale(const uint8_t* src, size_t src_len, uint8_t* out, jpg_scale_t
     jpeg.data_offset = 0;
 
     if(esp_jpg_decode(src_len, scale, _jpg_read, _grayscale_write, (void*)&jpeg) != ESP_OK){
+        return false;
+    }
+    return true;
+}
+
+// User generated converter from jpg to cropped rgb888
+bool jpg2rgb888cropped(const uint8_t* src, size_t src_len, uint8_t* out, jpg_scale_t scale, size_t crop_x_origin, size_t crop_y_origin, size_t crop_box_len)
+{
+    rgb_jpg_decoder jpeg;
+    jpeg.width = 0;
+    jpeg.height = 0;
+    jpeg.input = src;
+    jpeg.output = out;
+    jpeg.data_offset = 0;
+
+    if(esp_jpg_decode(src_len, scale, _jpg_read, _rgb_cropped_write, (void*)&jpeg) != ESP_OK){
         return false;
     }
     return true;

@@ -59,8 +59,8 @@ bool find_motion_centre(grayscale_image_t* motion_img, point_t* outPoint)
         return false;
     }
 
-    // Calculate the resulting average x/y point then offset it by half the bounding box with
-    // and clip to inside the image and at a valid bounding box start
+    // Calculate the resulting average x/y point then offset it by half the bounding box
+    // and clip to inside the image to create a valid bounding box start point
     outPoint->x = (x_sum / motion_pix_count) - (BOUNDING_BOX_EDGE_LEN/2);
     // (-1 is due to the x/y coords starting at 0,0)
     if ( outPoint->x > (motion_img->width - (1 + BOUNDING_BOX_EDGE_LEN)) )
@@ -142,4 +142,38 @@ void draw_motion_box(grayscale_image_t* motion_img, point_t box_origin)
         point.y = y;
         motion_img->buf[map_pixel_to_bufidx(point, motion_img->width, 1)] = 0xff;
     }
+}
+
+/// ------------------------------------------
+jpg_image_t crop_jpg_img(const jpg_image_t* source_img, point_t crop_origin)
+{
+    jpg_image_t cropped_jpg;
+    cropped_jpg.buf = NULL;
+
+    size_t crop_rgb_len = BOUNDING_BOX_EDGE_LEN * BOUNDING_BOX_EDGE_LEN * 3;
+    uint8_t* cropped_rgb = malloc(crop_rgb_len);
+
+    ESP_LOGI(CROP_TAG, "jpg image cropping started");
+    if (jpg2rgb888cropped(source_img->buf, source_img->len, cropped_rgb, JPG_SCALE_NONE, crop_origin.x, crop_origin.y, BOUNDING_BOX_EDGE_LEN) == false)
+    {
+        ESP_LOGE(CROP_TAG, "jpg image cropping failed!");
+        free(cropped_rgb);
+        return cropped_jpg;
+    }
+
+    ESP_LOGI(CROP_TAG, "converting cropped rgb to jpg");
+    if (fmt2jpg(cropped_rgb, crop_rgb_len, BOUNDING_BOX_EDGE_LEN, BOUNDING_BOX_EDGE_LEN, PIXFORMAT_RGB888, 1, &cropped_jpg.buf, &cropped_jpg.len) == false)
+    {
+        ESP_LOGE(CROP_TAG, "rgb->jpg image conversion failed!");
+        free(cropped_rgb);
+        free(cropped_jpg.buf);
+        cropped_jpg.buf = NULL;
+        return cropped_jpg;
+    }
+
+    free(cropped_rgb);
+
+    cropped_jpg.height = BOUNDING_BOX_EDGE_LEN;
+    cropped_jpg.width = BOUNDING_BOX_EDGE_LEN;
+    return cropped_jpg;
 }

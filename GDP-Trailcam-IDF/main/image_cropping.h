@@ -23,7 +23,7 @@
 /// @brief Number of an images pixels required to be above motion threshold to count as a relevant image
 #define MOTION_PIX_REQ 8000
 
-/// @brief Struct for storing a point in an image, assumed origin is (0,0) -> (w-1,h-1)
+/// @brief Struct for storing a point in an image, origin is at top left and coord space runs (0,0) -> (w-1,h-1)
 /// where w is image width and h is image height
 typedef struct
 {
@@ -87,3 +87,13 @@ void draw_motion_box(grayscale_image_t* motion_img, point_t box_origin);
 ///
 /// @param motion_img input image
 void quantize_motion_img(grayscale_image_t* motion_img);
+
+/// ------------------------------------------
+/// @brief Extracts a square frame from the source image of size BOUNDING_BOX_EDGE_LEN
+/// at the origin crop_origin
+///
+/// @param source_img source image to extract crop from
+/// @param crop_origin the origin of the square to extract
+///
+/// @return output cropped frame, buf is null if conversion fails
+jpg_image_t crop_jpg_img(const jpg_image_t* source_img, point_t crop_origin);

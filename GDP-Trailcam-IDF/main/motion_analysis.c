@@ -6,6 +6,9 @@
 
 #include "motion_analysis.h"
 
+/// @brief Logging tag
+static const char* MOTION_TAG = "motion_analysis";
+
 /// ------------------------------------------
 grayscale_image_t convert_jpg_to_grayscale(const jpg_image_t* jpg_image)
 {
@@ -78,16 +81,13 @@ grayscale_image_t motion_image_subtract(const grayscale_motion_data_t* motion_se
 }
 
 /// ------------------------------------------
-grayscale_image_t perform_motion_analysis(jpg_motion_data_t* motion_set)
+grayscale_image_t perform_motion_analysis(const jpg_motion_data_t* motion_set)
 {
     grayscale_image_t sub_image;
     sub_image.buf = NULL;
 
     ESP_LOGI(MOTION_TAG,"Converting motion to grayscale");
     grayscale_motion_data_t gray_motion = convert_jpg_motion_to_grayscale(motion_set);
-
-    ESP_LOGI(MOTION_TAG, "Freeing jpg motion set");
-    free_jpg_motion_data(motion_set);
 
     if (gray_motion.data_valid == false)
     {
