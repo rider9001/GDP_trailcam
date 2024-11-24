@@ -49,7 +49,7 @@ camera_config_t get_default_camera_config(const uint32_t power_down_pin)
         // Format and framesize settings, not sure if jpeg quality has any effect outside of JPEG mode
         .pixel_format   = PIXFORMAT_JPEG,
         .frame_size     = FRAMESIZE_FHD,
-        .jpeg_quality   = 5,
+        .jpeg_quality   = 5, // seems to not work below 5
 
         // Two frame buffers, one for each frame of the motion capture
         .fb_count       = 2,
@@ -234,11 +234,11 @@ void default_frame_settings()
         return;
     }
 
-    s->set_brightness(s, 1);     // -2 to 2
+    s->set_brightness(s, 2);     // -2 to 2
     s->set_contrast(s, 0);       // -2 to 2
     s->set_saturation(s, 0);     // -2 to 2
     s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
-    s->set_whitebal(s, 0);       // 0 = disable , 1 = enable
+    s->set_whitebal(s, 1);       // 0 = disable , 1 = ednable
     s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
     s->set_wb_mode(s, 4);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
     s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable

@@ -17,7 +17,7 @@ grayscale_image_t convert_jpg_to_grayscale(const jpg_image_t* jpg_image)
     gray_image.width = jpg_image->width;
     gray_image.len = gray_image.width * gray_image.height;
 
-    ESP_LOGI(MOTION_TAG, "Allocating %u bytes for grayscale, %ux%u", gray_image.len, gray_image.width, gray_image.width);
+    ESP_LOGI(MOTION_TAG, "Allocating %u bytes for grayscale, %ux%u", gray_image.len, gray_image.width, gray_image.height);
     gray_image.buf = malloc(gray_image.len);
 
     ESP_LOGI(MOTION_TAG, "Converting jpg to grayscale");

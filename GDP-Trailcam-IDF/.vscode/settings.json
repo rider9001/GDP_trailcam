@@ -47,7 +47,9 @@
         "img_converters.h": "c",
         "string.h": "c",
         "stddef.h": "c",
-        "esp_jpg_decode.h": "c"
+        "esp_jpg_decode.h": "c",
+        "bit": "c",
+        "cmath": "c"
     },
     "idf.flashType": "UART"
 }

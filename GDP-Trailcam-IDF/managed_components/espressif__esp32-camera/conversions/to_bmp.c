@@ -146,13 +146,19 @@ static bool _rgb565_write(void * arg, uint16_t x, uint16_t y, uint16_t w, uint16
 
     for(iy=t, iy2=t2; iy<b; iy+=jw, iy2+=jw2) {
         o = out+iy2+l;
-        for(ix2=ix=0; ix<w; ix+= 3, ix2 +=2) {
+        for(ix2=ix=0; ix<w; ix += 3, ix2 +=2) {
             uint16_t r = data[ix+2];
             uint16_t g = data[ix+1];
             uint16_t b = data[ix];
-            uint16_t c = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-            o[ix2] = c>>8;
-            o[ix2+1] = c&0xff;
+
+            // performing actual scaling from 8->5/6 bits as opposed to the esp source
+            r = (uint16_t)(((float)r / 255.f) * 32.f);
+            g = (uint16_t)(((float)g / 255.f) * 64.f);
+            b = (uint16_t)(((float)b / 255.f) * 32.f);
+
+            uint16_t c = ((r << 11) & 0b1111100000000000) | ((g << 5) & 0b0000011111100000) | (b & 0b0000000000011111);
+            o[ix2] = c >> 8;
+            o[ix2+1] = c & 0xff;
         }
         data+=w;
     }

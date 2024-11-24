@@ -141,7 +141,7 @@ void motion_processing_task()
                     free(box_filenm);
 
                     ESP_LOGI(MAIN_TAG, "Cropping jpg image");
-                    rgb565_image_t box_img = crop_jpg_img(&jpg_motion_data.img1, bb_origin);
+                    jpg_image_t box_img = crop_jpg_img(&jpg_motion_data.img1, bb_origin);
                     free_jpg_motion_data(&jpg_motion_data);
 
                     if (box_img.buf == NULL)
@@ -151,7 +151,7 @@ void motion_processing_task()
                     else
                     {
                         char* box_img_filenm = malloc(64);
-                        sprintf(box_img_filenm, MOUNT_POINT"/%u/box.rgb", jpg_motion_data.t1);
+                        sprintf(box_img_filenm, MOUNT_POINT"/%u/box.jpg", jpg_motion_data.t1);
 
                         if (write_data_SDSPI(box_img_filenm, box_img.buf, box_img.len) != ESP_OK)
                         {
@@ -183,14 +183,14 @@ void app_main(void)
     if (connection.card == NULL)
     {
         ESP_LOGE(MAIN_TAG, "Failed to start SDSPI");
-        return;
+        esp_restart();
     }
 
     ESP_LOGI(MAIN_TAG, "Running SD SPI POST...");
     if (SDSPI_POST() != ESP_OK)
     {
         ESP_LOGE(MAIN_TAG, "POST failed on a SD SPI");
-        return;
+        esp_restart();
     }
     ESP_LOGI(MAIN_TAG, "SD SPI POST sucsess");
 
@@ -207,7 +207,6 @@ void app_main(void)
     {
         ESP_LOGE(MAIN_TAG, "POST failed on a camera");
         esp_restart();
-        return;
     }
     ESP_LOGI(MAIN_TAG, "Camera POST sucsess");
 

@@ -97,4 +97,4 @@ void quantize_motion_img(grayscale_image_t* motion_img);
 /// @param crop_origin the origin of the square to extract
 ///
 /// @return output cropped frame, buf is null if conversion fails
-rgb565_image_t crop_jpg_img(const jpg_image_t* source_img, point_t crop_origin);
+jpg_image_t crop_jpg_img(const jpg_image_t* source_img, point_t crop_origin);
