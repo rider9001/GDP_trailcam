@@ -147,12 +147,12 @@ static bool _rgb565_write(void * arg, uint16_t x, uint16_t y, uint16_t w, uint16
     for(iy=t, iy2=t2; iy<b; iy+=jw, iy2+=jw2) {
         o = out+iy2+l;
         for(ix2=ix=0; ix<w; ix+= 3, ix2 +=2) {
-            uint16_t r = data[ix];
+            uint16_t r = data[ix+2];
             uint16_t g = data[ix+1];
-            uint16_t b = data[ix+2];
+            uint16_t b = data[ix];
             uint16_t c = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-            o[ix2+1] = c>>8;
-            o[ix2] = c&0xff;
+            o[ix2] = c>>8;
+            o[ix2+1] = c&0xff;
         }
         data+=w;
     }
@@ -222,7 +222,7 @@ static unsigned int _jpg_read(void * arg, size_t index, uint8_t *buf, size_t len
     return len;
 }
 
-static bool jpg2rgb888(const uint8_t *src, size_t src_len, uint8_t * out, jpg_scale_t scale)
+bool jpg2rgb888(const uint8_t *src, size_t src_len, uint8_t * out, jpg_scale_t scale)
 {
     rgb_jpg_decoder jpeg;
     jpeg.width = 0;

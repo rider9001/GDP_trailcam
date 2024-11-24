@@ -24,6 +24,20 @@ typedef struct
     size_t width;
 } rgb565_image_t;
 
+typedef struct
+{
+    // Buffer of pixel data
+    uint8_t* buf;
+
+    // Length of the buffer
+    size_t len;
+
+    // Hieght of the image
+    size_t height;
+
+    // Width of the image
+    size_t width;
+} rgb888_image_t;
 
 /// @brief Struct that contains jpg image buffer data (NOTE: buf must be individually freed)
 typedef struct
