@@ -209,7 +209,7 @@ bool fmt2jpg(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixf
 {
     //todo: allocate proper buffer for holding JPEG data
     //this should be enough for CIF frame size
-    int jpg_buf_len = 128*1024;
+    int jpg_buf_len = 512*1024;
 
 
     uint8_t * jpg_buf = (uint8_t *)_malloc(jpg_buf_len);
@@ -224,8 +224,11 @@ bool fmt2jpg(uint8_t *src, size_t src_len, uint16_t width, uint16_t height, pixf
         return false;
     }
 
-    *out = jpg_buf;
     *out_len = dst_stream.get_size();
+
+    *out = (uint8_t*)malloc(*out_len);
+    memcpy(*out, jpg_buf, *out_len);
+    free(jpg_buf);
     return true;
 }
 

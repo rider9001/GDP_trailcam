@@ -74,7 +74,7 @@ bool find_motion_centre(grayscale_image_t* motion_img, point_t* outPoint)
         outPoint->y = motion_img->height - (1 + BOUNDING_BOX_EDGE_LEN);
     }
 
-    ESP_LOGI(CROP_TAG, "Image motion signficant");
+    ESP_LOGI(CROP_TAG, "Image motion signficant (>%u)", MOTION_PIX_REQ);
     return true;
 }
 
@@ -145,35 +145,49 @@ void draw_motion_box(grayscale_image_t* motion_img, point_t box_origin)
 }
 
 /// ------------------------------------------
-jpg_image_t crop_jpg_img(const jpg_image_t* source_img, point_t crop_origin)
+rgb565_image_t crop_jpg_img(const jpg_image_t* source_img, point_t crop_origin)
 {
-    jpg_image_t cropped_jpg;
-    cropped_jpg.buf = NULL;
-
-    size_t crop_rgb_len = BOUNDING_BOX_EDGE_LEN * BOUNDING_BOX_EDGE_LEN * 3;
-    uint8_t* cropped_rgb = malloc(crop_rgb_len);
+    rgb565_image_t cropped_rgb;
+    cropped_rgb.buf = NULL;
 
     ESP_LOGI(CROP_TAG, "jpg image cropping started");
-    if (jpg2rgb888cropped(source_img->buf, source_img->len, cropped_rgb, JPG_SCALE_NONE, crop_origin.x, crop_origin.y, BOUNDING_BOX_EDGE_LEN) == false)
+
+    // First, convert whole image to rgb565
+    uint8_t* source_rgb = malloc(source_img->height * source_img->width * 2);
+    if (jpg2rgb565(source_img->buf, source_img->len, source_rgb, JPG_SCALE_NONE) == false)
     {
-        ESP_LOGE(CROP_TAG, "jpg image cropping failed!");
-        free(cropped_rgb);
-        return cropped_jpg;
+        ESP_LOGI(CROP_TAG, "JPG to RGB565 conversion failed");
+        free(source_rgb);
+        return cropped_rgb;
     }
 
-    ESP_LOGI(CROP_TAG, "converting cropped rgb to jpg");
-    if (fmt2jpg(cropped_rgb, crop_rgb_len, BOUNDING_BOX_EDGE_LEN, BOUNDING_BOX_EDGE_LEN, PIXFORMAT_RGB888, 1, &cropped_jpg.buf, &cropped_jpg.len) == false)
+    // setup crop buffer to extract crop into
+    cropped_rgb.len = BOUNDING_BOX_EDGE_LEN * BOUNDING_BOX_EDGE_LEN * 2;
+    cropped_rgb.buf = malloc(cropped_rgb.len);
+
+    point_t crop_end;
+    crop_end.x = crop_origin.x + BOUNDING_BOX_EDGE_LEN;
+    crop_end.y = crop_origin.y + BOUNDING_BOX_EDGE_LEN;
+    size_t crop_idx = 0;
+    for (size_t y = crop_origin.y; y < crop_end.y; y++)
     {
-        ESP_LOGE(CROP_TAG, "rgb->jpg image conversion failed!");
-        free(cropped_rgb);
-        free(cropped_jpg.buf);
-        cropped_jpg.buf = NULL;
-        return cropped_jpg;
+        for (size_t x = crop_origin.x; x < crop_end.x; x++)
+        {
+            point_t cur_p;
+            cur_p.x = x;
+            cur_p.y = y;
+            size_t cur_source_idx = map_pixel_to_bufidx(cur_p, source_img->width, 2);
+
+            cropped_rgb.buf[crop_idx] = source_rgb[cur_source_idx];
+            cropped_rgb.buf[crop_idx+1] = source_rgb[cur_source_idx+1];
+
+            crop_idx += 2;
+        }
     }
 
-    free(cropped_rgb);
+    free(source_rgb);
 
-    cropped_jpg.height = BOUNDING_BOX_EDGE_LEN;
-    cropped_jpg.width = BOUNDING_BOX_EDGE_LEN;
-    return cropped_jpg;
+    cropped_rgb.height = BOUNDING_BOX_EDGE_LEN;
+    cropped_rgb.width = BOUNDING_BOX_EDGE_LEN;
+    return cropped_rgb;
 }

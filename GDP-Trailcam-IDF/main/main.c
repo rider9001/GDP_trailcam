@@ -107,6 +107,7 @@ void motion_processing_task()
 
             if (sub_img.buf != NULL)
             {
+                ESP_LOGI(MAIN_TAG, "Writing image subtraction");
                 char* sub_filenm = malloc(32);
                 sprintf(sub_filenm, MOUNT_POINT"/%u/sub.bin", motion_t1);
 
@@ -120,6 +121,8 @@ void motion_processing_task()
                 ESP_LOGI(MAIN_TAG, "Attempting to find centre of motion");
                 if (find_motion_centre(&sub_img, &bb_origin))
                 {
+                    free(sub_img.buf);
+
                     ESP_LOGI(MAIN_TAG, "Motion bounding box from (%u,%u) to (%u,%u)",
                             bb_origin.x,
                             bb_origin.y,
@@ -128,6 +131,7 @@ void motion_processing_task()
 
                     draw_motion_box(&sub_img, bb_origin);
 
+                    ESP_LOGI(MAIN_TAG, "Writing box image");
                     char* box_filenm = malloc(sizeof(char) * 32);
                     sprintf(box_filenm, MOUNT_POINT"/%u/box.bin", motion_t1);
                     if (write_data_SDSPI(box_filenm, sub_img.buf, sub_img.len) != ESP_OK)
@@ -137,7 +141,7 @@ void motion_processing_task()
                     free(box_filenm);
 
                     ESP_LOGI(MAIN_TAG, "Cropping jpg image");
-                    jpg_image_t box_img = crop_jpg_img(&jpg_motion_data.img1, bb_origin);
+                    rgb565_image_t box_img = crop_jpg_img(&jpg_motion_data.img1, bb_origin);
                     free_jpg_motion_data(&jpg_motion_data);
 
                     if (box_img.buf == NULL)
@@ -147,20 +151,22 @@ void motion_processing_task()
                     else
                     {
                         char* box_img_filenm = malloc(64);
-                        sprintf(box_img_filenm, MOUNT_POINT"/%u/box.jpg", jpg_motion_data.t1);
+                        sprintf(box_img_filenm, MOUNT_POINT"/%u/box.rgb", jpg_motion_data.t1);
 
                         if (write_data_SDSPI(box_img_filenm, box_img.buf, box_img.len) != ESP_OK)
                         {
                             ESP_LOGE(MAIN_TAG, "Failed to write cropped img to SD");
                         }
                         free(box_img_filenm);
+
+                        free(box_img.buf);
                     }
                 }
                 else
                 {
+                    free(sub_img.buf);
                     ESP_LOGI(MAIN_TAG, "Image not motion significant");
                 }
-                free(sub_img.buf);
             }
             else
             {

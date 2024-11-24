@@ -134,20 +134,6 @@ bool jpg2rgb565(const uint8_t *src, size_t src_len, uint8_t * out, jpg_scale_t s
 /// @return sucsess bool
 bool jpg2grayscale(const uint8_t* src, size_t src_len, uint8_t* out, jpg_scale_t scale);
 
-/// ------------------------------------------
-/// @brief Converts a square of a jpg image into rgb888 data, square origin and side length is defined by the x/y crop origin and the box len
-///
-/// @param src source buffer of jpg data
-/// @param src_len length of source buffer
-/// @param out output grayscale buffer
-/// @param scale to decode jpg at
-/// @param crop_x_origin x coord for origin of crop box
-/// @param crop_y_origin y coord for origin of crop box
-/// @param crop_box_len side length of the crop box
-///
-/// @return was image conversion sucsessful?
-bool jpg2rgb888cropped(const uint8_t* src, size_t src_len, uint8_t* out, jpg_scale_t scale, size_t crop_x_origin, size_t crop_y_origin, size_t crop_box_len);
-
 #ifdef __cplusplus
 }
 #endif

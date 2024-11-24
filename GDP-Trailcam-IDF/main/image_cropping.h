@@ -13,15 +13,16 @@
 #include "esp_camera.h"
 
 #include "image_types.h"
+#include "SDSPI.h"
 
 /// @brief The length in pixels of the created square bounding box
 #define BOUNDING_BOX_EDGE_LEN 640
 
 /// @brief Minimum value a pixel must be above the average to be counted as a motion pixel
-#define MOTION_PIX_THRES_ABV_AVG 35
+#define MOTION_PIX_THRES_ABV_AVG 40
 
 /// @brief Number of an images pixels required to be above motion threshold to count as a relevant image
-#define MOTION_PIX_REQ 8000
+#define MOTION_PIX_REQ 1 // temp for testing4500
 
 /// @brief Struct for storing a point in an image, origin is at top left and coord space runs (0,0) -> (w-1,h-1)
 /// where w is image width and h is image height
@@ -96,4 +97,4 @@ void quantize_motion_img(grayscale_image_t* motion_img);
 /// @param crop_origin the origin of the square to extract
 ///
 /// @return output cropped frame, buf is null if conversion fails
-jpg_image_t crop_jpg_img(const jpg_image_t* source_img, point_t crop_origin);
+rgb565_image_t crop_jpg_img(const jpg_image_t* source_img, point_t crop_origin);
