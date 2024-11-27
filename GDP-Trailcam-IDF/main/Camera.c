@@ -95,7 +95,7 @@ esp_err_t cam_POST(const camera_config_t config)
     }
 
     // Setup frame settings
-    default_frame_settings();
+    default_frame_settings(TEMP_GLOBAL_IMAGE_SET);
 
     // Take an image
     ESP_LOGI(CAM_TAG, "Grabbing frame buffer");
@@ -225,7 +225,7 @@ esp_err_t write_jpg_data_to_SD(const char* path, const jpg_image_t jpg_data)
 }
 
 /// ------------------------------------------
-void default_frame_settings()
+void default_frame_settings(Camera_image_preset_t camera_setting)
 {
     sensor_t* s = esp_camera_sensor_get();
     if (s == NULL)
@@ -234,31 +234,66 @@ void default_frame_settings()
         return;
     }
 
-    s->set_brightness(s, 2);     // -2 to 2
-    s->set_contrast(s, -2);       // -2 to 2
-    s->set_saturation(s, -2);     // -2 to 2
-    s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
-    s->set_whitebal(s, 1);       // 0 = disable , 1 = ednable
-    s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
-    s->set_wb_mode(s, 2);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
-    s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
-    s->set_aec2(s, 1);           // 0 = disable , 1 = enabled
-    s->set_ae_level(s, 2);       // -2 to 2
-    s->set_aec_value(s, 300);    // 0 to 1200
-    s->set_gain_ctrl(s, 1);      // 0 = disable , 1 = enable
-    s->set_agc_gain(s, 1);       // 0 to 30
-    s->set_gainceiling(s, (gainceiling_t)0);  // 0 to 6
-    s->set_bpc(s, 0);            // 0 = disable , 1 = enable
-    s->set_wpc(s, 1);            // 0 = disable , 1 = enable
-    s->set_raw_gma(s, 1);        // 0 = disable , 1 = enable
-    s->set_lenc(s, 1);           // 0 = disable , 1 = enable
-    s->set_hmirror(s, 0);        // 0 = disable , 1 = enable
-    s->set_vflip(s, 0);          // 0 = disable , 1 = enable
-    s->set_dcw(s, 1);            // 0 = disable , 1 = enable
-    s->set_colorbar(s, 0);       // 0 = disable , 1 = enable
-    s->set_denoise(s, 10);
+    if (camera_setting == LOW_LIGHT)
+    {
+        s->set_brightness(s, 2);     // -2 to 2
+        s->set_contrast(s, -2);       // -2 to 2
+        s->set_saturation(s, -2);     // -2 to 2
+        s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
+        s->set_whitebal(s, 1);       // 0 = disable , 1 = ednable
+        s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
+        s->set_wb_mode(s, 2);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+        s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
+        s->set_aec2(s, 1);           // 0 = disable , 1 = enabled
+        s->set_ae_level(s, 2);       // -2 to 2
+        s->set_aec_value(s, 300);    // 0 to 1200
+        s->set_gain_ctrl(s, 1);      // 0 = disable , 1 = enable
+        s->set_agc_gain(s, 1);       // 0 to 30
+        s->set_gainceiling(s, (gainceiling_t)0);  // 0 to 6
+        s->set_bpc(s, 0);            // 0 = disable , 1 = enable
+        s->set_wpc(s, 1);            // 0 = disable , 1 = enable
+        s->set_raw_gma(s, 1);        // 0 = disable , 1 = enable
+        s->set_lenc(s, 1);           // 0 = disable , 1 = enable
+        s->set_hmirror(s, 0);        // 0 = disable , 1 = enable
+        s->set_vflip(s, 0);          // 0 = disable , 1 = enable
+        s->set_dcw(s, 1);            // 0 = disable , 1 = enable
+        s->set_colorbar(s, 0);       // 0 = disable , 1 = enable
+        s->set_denoise(s, 10);
 
-    ESP_LOGI(CAM_TAG, "Defaulted camera settings");
+        ESP_LOGI(CAM_TAG, "Setup imaging for low light");
+    }
+    else if (camera_setting == DAYLIGHT)
+    {
+        s->set_brightness(s, 0);     // -2 to 2
+        s->set_contrast(s, 0);       // -2 to 2
+        s->set_saturation(s, 0);     // -2 to 2
+        s->set_special_effect(s, 0); // 0 to 6 (0 - No Effect, 1 - Negative, 2 - Grayscale, 3 - Red Tint, 4 - Green Tint, 5 - Blue Tint, 6 - Sepia)
+        s->set_whitebal(s, 1);       // 0 = disable , 1 = ednable
+        s->set_awb_gain(s, 1);       // 0 = disable , 1 = enable
+        s->set_wb_mode(s, 2);        // 0 to 4 - if awb_gain enabled (0 - Auto, 1 - Sunny, 2 - Cloudy, 3 - Office, 4 - Home)
+        s->set_exposure_ctrl(s, 1);  // 0 = disable , 1 = enable
+        s->set_aec2(s, 1);           // 0 = disable , 1 = enabled
+        s->set_ae_level(s, 2);       // -2 to 2
+        s->set_aec_value(s, 300);    // 0 to 1200
+        s->set_gain_ctrl(s, 1);      // 0 = disable , 1 = enable
+        s->set_agc_gain(s, 1);       // 0 to 30
+        s->set_gainceiling(s, (gainceiling_t)0);  // 0 to 6
+        s->set_bpc(s, 0);            // 0 = disable , 1 = enable
+        s->set_wpc(s, 1);            // 0 = disable , 1 = enable
+        s->set_raw_gma(s, 1);        // 0 = disable , 1 = enable
+        s->set_lenc(s, 1);           // 0 = disable , 1 = enable
+        s->set_hmirror(s, 0);        // 0 = disable , 1 = enable
+        s->set_vflip(s, 0);          // 0 = disable , 1 = enable
+        s->set_dcw(s, 1);            // 0 = disable , 1 = enable
+        s->set_colorbar(s, 0);       // 0 = disable , 1 = enable
+        s->set_denoise(s, 10);
+
+        ESP_LOGI(CAM_TAG, "Setup imaging for daylight");
+    }
+    else
+    {
+        ESP_LOGI(CAM_TAG, "Ivalid imaging preset num, no change made.");
+    }
 }
 
 /// ------------------------------------------
@@ -294,7 +329,7 @@ jpg_motion_data_t* get_motion_capture(camera_config_t config)
         return motion;
     }
 
-    default_frame_settings();
+    default_frame_settings(TEMP_GLOBAL_IMAGE_SET);
 
     ESP_LOGI(CAM_TAG, "Grabbing frame buffer");
     size_t capture1_milli = esp_log_timestamp();

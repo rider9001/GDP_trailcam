@@ -22,7 +22,7 @@
 #define MOTION_PIX_THRES_ABV_AVG 40
 
 /// @brief Percent of an images pixels required to be above motion threshold to count as a relevant image
-#define MOTION_PIX_REQ_PERCENT 0.001
+#define MOTION_PIX_REQ_PERCENT 0.01
 
 /// @brief Struct for storing a point in an image, origin is at top left and coord space runs (0,0) -> (w-1,h-1)
 /// where w is image width and h is image height

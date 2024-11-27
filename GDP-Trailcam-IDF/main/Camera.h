@@ -18,6 +18,12 @@
 #include "SDSPI.h"
 #include "image_types.h"
 
+typedef enum
+{
+    DAYLIGHT,
+    LOW_LIGHT
+} Camera_image_preset_t;
+
 /// @brief List of powerdown pins for all attached cameras
 static const int cam_power_down_pins[] = {CONFIG_PIN_CAM_PWRDN_1, CONFIG_PIN_CAM_PWRDN_2, CONFIG_PIN_CAM_PWRDN_3, CONFIG_PIN_CAM_PWRDN_4};
 
@@ -35,6 +41,8 @@ static const int cam_power_down_pins[] = {CONFIG_PIN_CAM_PWRDN_1, CONFIG_PIN_CAM
 
 /// @brief Target delay in time between the two images in the motion capture
 #define CAM_MOTION_CAPTURE_WAIT_MS 50
+
+#define TEMP_GLOBAL_IMAGE_SET DAYLIGHT
 
 /// ------------------------------------------
 /// @brief Creates a default camera config sturct to use for initializing and deinitializing a camera
@@ -111,7 +119,7 @@ esp_err_t write_jpg_data_to_SD(const char* path, const jpg_image_t jpg_data);
 
 /// ------------------------------------------
 /// @brief Sets all camera image settings to sensible values
-void default_frame_settings();
+void default_frame_settings(Camera_image_preset_t camera_setting);
 
 /// ------------------------------------------
 /// @brief Sets up the power down pins given in cam_power_down_pins as a driven outputs
