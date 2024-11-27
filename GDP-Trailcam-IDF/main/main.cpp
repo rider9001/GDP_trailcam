@@ -4,23 +4,29 @@
 /// @brief Main source of the GDP trailcam project
 /// ------------------------------------------
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/timers.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
-#include "driver/gpio.h"
+extern "C" {
+    #include "freertos/FreeRTOS.h"
+    #include "freertos/timers.h"
+    #include "freertos/task.h"
+    #include "freertos/queue.h"
+    #include "driver/gpio.h"
 
-#include "SDSPI.h"
-#include "Camera.h"
-#include "motion_analysis.h"
-#include "image_cropping.h"
+    #include "SDSPI.h"
+    #include "Camera.h"
+    #include "motion_analysis.h"
+    #include "image_cropping.h"
+}
+
+#include "image_classifier.h"
+
+uint8_t num = best_float16_tflite[4];
 
 static const char* MAIN_TAG = "main";
 
 SDSPI_connection_t connection;
 camera_config_t config;
 
-#define PIR_PIN 11
+#define PIR_PIN (gpio_num_t)11
 
 QueueHandle_t cam_queue;
 QueueHandle_t motion_proc_queue;
@@ -54,7 +60,7 @@ void PIR_state_latch()
         ESP_LOGI(MAIN_TAG, "PIR active, running camera");
 
         // when unpaused that means that the PIR has triggered, run camera task
-        xQueueSend(cam_queue, &pin, NULL);
+        xQueueSend(cam_queue, &pin, portMAX_DELAY);
 
         // Wait this task for a few seconds whilst camera task runs to prevent
         // runnning pushing another image capture for the same incident
@@ -66,7 +72,7 @@ void PIR_state_latch()
             // Test if ISR detects PIR being noisy over 500ms
             PIR_active = 0;
             // Connect watchdog ISR
-            gpio_isr_handler_add(PIR_PIN, PIR_hold_state_ISR, NULL);
+            gpio_isr_handler_add(PIR_PIN, (gpio_isr_t)PIR_hold_state_ISR, 0);
             vTaskDelay(pdMS_TO_TICKS(500));
             if (PIR_active == 0)
             {
@@ -79,7 +85,7 @@ void PIR_state_latch()
         }
 
         // reattach old ISR
-        gpio_isr_handler_add(PIR_PIN, PIR_watchdog_ISR, NULL);
+        gpio_isr_handler_add(PIR_PIN, (gpio_isr_t)PIR_watchdog_ISR, NULL);
 
         // Loop should now reset and pause, waiting for next watchdog unpause
     }
@@ -108,7 +114,7 @@ void motion_processing_task()
             if (sub_img.buf != NULL)
             {
                 ESP_LOGI(MAIN_TAG, "Writing image subtraction");
-                char* sub_filenm = malloc(32);
+                char* sub_filenm = (char*)malloc(32);
                 sprintf(sub_filenm, MOUNT_POINT"/%u/sub.bin", motion_t1);
 
                 if (write_data_SDSPI(sub_filenm, sub_img.buf, sub_img.len) != ESP_OK)
@@ -132,7 +138,7 @@ void motion_processing_task()
                     draw_motion_box(&sub_img, bb_origin);
 
                     ESP_LOGI(MAIN_TAG, "Writing box image");
-                    char* box_filenm = malloc(sizeof(char) * 32);
+                    char* box_filenm = (char*)malloc(32);
                     sprintf(box_filenm, MOUNT_POINT"/%u/box.bin", motion_t1);
                     if (write_data_SDSPI(box_filenm, sub_img.buf, sub_img.len) != ESP_OK)
                     {
@@ -150,7 +156,7 @@ void motion_processing_task()
                     }
                     else
                     {
-                        char* box_img_filenm = malloc(64);
+                        char* box_img_filenm = (char*)malloc(64);
                         sprintf(box_img_filenm, MOUNT_POINT"/%u/box.jpg", jpg_motion_data.t1);
 
                         if (write_data_SDSPI(box_img_filenm, box_img.buf, box_img.len) != ESP_OK)
@@ -176,7 +182,7 @@ void motion_processing_task()
     }
 }
 
-void app_main(void)
+extern "C" void app_main(void)
 {
     // Most SDSPI functions assume that there exists a working connection already
     connect_to_SDSPI(PIN_NUM_MISO, PIN_NUM_MOSI, PIN_NUM_CLK, PIN_NUM_CS, &connection);
@@ -215,8 +221,8 @@ void app_main(void)
     cam_queue = xQueueCreate(5, sizeof(int));
     motion_proc_queue = xQueueCreate(5, sizeof(jpg_motion_data_t));
 
-    xTaskCreate(PIR_state_latch, "PIR_state_latch", 1024 * 8, NULL, 3, &PIR_trig_handle);
-    xTaskCreate(motion_processing_task, "Motion processing task", 1024 * 16, &motion_proc_queue, 3, NULL);
+    xTaskCreate((TaskFunction_t)PIR_state_latch, "PIR_state_latch", 1024 * 8, NULL, 3, &PIR_trig_handle);
+    xTaskCreate((TaskFunction_t)motion_processing_task, "Motion processing task", 1024 * 16, &motion_proc_queue, 3, NULL);
     vTaskPrioritySet(NULL, 4);
 
     esp_rom_gpio_pad_select_gpio(PIR_PIN);
@@ -228,7 +234,7 @@ void app_main(void)
     ESP_LOGI(MAIN_TAG, "Waiting for low");
 
     // Only engage ISR once all cams tested
-    gpio_isr_handler_add(PIR_PIN, PIR_watchdog_ISR, NULL);
+    gpio_isr_handler_add(PIR_PIN, (gpio_isr_t)PIR_watchdog_ISR, NULL);
 
     while(1)
     {
@@ -273,7 +279,7 @@ void app_main(void)
                 char filenm_info[FILENAME_MAX_SIZE];
                 sprintf(filenm_info, "%s/info.txt", dir);
 
-                char* info_text = malloc(300 * sizeof(char));
+                char* info_text = (char*)malloc(300);
                 sprintf(info_text, "Images were taken %ums apart.\nImage 1: %u\nImage 2: %u\n"
                                    "Image res is %ux%u", motion->t2 - motion->t1,
                                    motion->t1, motion->t2, motion->img1.width, motion->img1.height);
@@ -288,7 +294,7 @@ void app_main(void)
 
             // The motion set should be considered transfered to the processing task
             ESP_LOGI(MAIN_TAG, "Sending capture to motion analysis");
-            xQueueSend(motion_proc_queue, motion, NULL);
+            xQueueSend(motion_proc_queue, motion, portMAX_DELAY);
         }
     }
 }
