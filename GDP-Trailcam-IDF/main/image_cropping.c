@@ -52,10 +52,12 @@ bool find_motion_centre(grayscale_image_t* motion_img, point_t* outPoint)
 
     ESP_LOGI(CROP_TAG, "Image has %u motion pixels", motion_pix_count);
 
+    size_t needed_pixels = MOTION_PIX_REQ_PERCENT * motion_img->width * motion_img->height;
+
     // Check if number of pixels is sufficient for image significance
-    if (motion_pix_count < MOTION_PIX_REQ)
+    if (motion_pix_count < needed_pixels)
     {
-        ESP_LOGI(CROP_TAG, "Image not motion signficant");
+        ESP_LOGI(CROP_TAG, "Image not motion signficant(<%u)", needed_pixels);
         return false;
     }
 
@@ -74,7 +76,7 @@ bool find_motion_centre(grayscale_image_t* motion_img, point_t* outPoint)
         outPoint->y = motion_img->height - (1 + BOUNDING_BOX_EDGE_LEN);
     }
 
-    ESP_LOGI(CROP_TAG, "Image motion signficant (>%u)", MOTION_PIX_REQ);
+    ESP_LOGI(CROP_TAG, "Image motion signficant (>%u)", needed_pixels);
     return true;
 }
 

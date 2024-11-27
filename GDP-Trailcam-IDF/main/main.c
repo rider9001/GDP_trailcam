@@ -184,6 +184,7 @@ void app_main(void)
     {
         ESP_LOGE(MAIN_TAG, "Failed to start SDSPI");
         esp_restart();
+        return;
     }
 
     ESP_LOGI(MAIN_TAG, "Running SD SPI POST...");
@@ -191,6 +192,7 @@ void app_main(void)
     {
         ESP_LOGE(MAIN_TAG, "POST failed on a SD SPI");
         esp_restart();
+        return;
     }
     ESP_LOGI(MAIN_TAG, "SD SPI POST sucsess");
 

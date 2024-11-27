@@ -115,9 +115,22 @@ esp_err_t SDSPI_POST()
 
     const char* test_dir = MOUNT_POINT"/testdir";
 
-    if (create_dir_SDSPI(test_dir) != ESP_OK)
+    esp_err_t err;
+    err = create_dir_SDSPI(test_dir);
+    if (err != ESP_OK)
     {
-        return ESP_FAIL;
+        if (err != ESP_ERR_INVALID_ARG)
+        {
+            return ESP_FAIL;
+        }
+    }
+
+    if (check_file_SDSPI(test_filename) == true)
+    {
+        if (delete_file_SDSPI(test_filename) != ESP_OK)
+        {
+            return ESP_FAIL;
+        }
     }
 
     if (write_data_SDSPI(test_filename, test_buf, test_buf_sz) != ESP_OK)

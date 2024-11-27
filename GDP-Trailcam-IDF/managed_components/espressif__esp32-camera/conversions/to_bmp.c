@@ -152,9 +152,9 @@ static bool _rgb565_write(void * arg, uint16_t x, uint16_t y, uint16_t w, uint16
             uint16_t b = data[ix];
 
             // performing actual scaling from 8->5/6 bits as opposed to the esp source
-            r = (uint16_t)(((float)r / 255.f) * 32.f);
-            g = (uint16_t)(((float)g / 255.f) * 64.f);
-            b = (uint16_t)(((float)b / 255.f) * 32.f);
+            r = (uint16_t)(((float)r / 255.f) * 31.f);
+            g = (uint16_t)(((float)g / 255.f) * 63.f);
+            b = (uint16_t)(((float)b / 255.f) * 31.f);
 
             uint16_t c = ((r << 11) & 0b1111100000000000) | ((g << 5) & 0b0000011111100000) | (b & 0b0000000000011111);
             o[ix2] = c >> 8;
