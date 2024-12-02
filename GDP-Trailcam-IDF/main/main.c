@@ -9,7 +9,6 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "driver/gpio.h"
-
 #include "SDSPI.h"
 #include "Camera.h"
 #include "motion_analysis.h"
@@ -20,7 +19,7 @@ static const char* MAIN_TAG = "main";
 SDSPI_connection_t connection;
 camera_config_t config;
 
-#define PIR_PIN 11
+#define PIR_PIN 48
 
 QueueHandle_t cam_queue;
 QueueHandle_t motion_proc_queue;
