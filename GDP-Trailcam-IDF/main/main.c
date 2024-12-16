@@ -9,17 +9,20 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "driver/gpio.h"
+#include "esp_pm.h"
+
 #include "SDSPI.h"
 #include "Camera.h"
 #include "motion_analysis.h"
 #include "image_cropping.h"
+#include "status_led.h"
 
 static const char* MAIN_TAG = "main";
 
 SDSPI_connection_t connection;
 camera_config_t config;
 
-#define PIR_PIN 48
+#define PIR_PIN 1
 
 QueueHandle_t cam_queue;
 QueueHandle_t motion_proc_queue;
@@ -177,12 +180,14 @@ void motion_processing_task()
 
 void app_main(void)
 {
+    setup_led();
+    set_led_colour(0, 120, 0); // SD card setup colour (Green)
     // Most SDSPI functions assume that there exists a working connection already
     connect_to_SDSPI(PIN_NUM_MISO, PIN_NUM_MOSI, PIN_NUM_CLK, PIN_NUM_CS, &connection);
     if (connection.card == NULL)
     {
         ESP_LOGE(MAIN_TAG, "Failed to start SDSPI");
-        esp_restart();
+        set_led_colour(255, 0, 0); // error colour
         return;
     }
 
@@ -190,15 +195,12 @@ void app_main(void)
     if (SDSPI_POST() != ESP_OK)
     {
         ESP_LOGE(MAIN_TAG, "POST failed on a SD SPI");
-        esp_restart();
+        set_led_colour(255, 0, 0); // error colour
         return;
     }
     ESP_LOGI(MAIN_TAG, "SD SPI POST sucsess");
 
-
-    ESP_LOGI(MAIN_TAG, "Installing ISR service");
-    gpio_install_isr_service(0);
-
+    set_led_colour(0, 0, 120); // Cam POST indicator (Blue)
     // This should always be run first, sets all power down pins as outputs and shuts down all cameras
     ESP_LOGI(MAIN_TAG, "Setting up cam power pins");
     setup_all_cam_power_down_pins();
@@ -207,9 +209,14 @@ void app_main(void)
     if (POST_all_cams() != ESP_OK)
     {
         ESP_LOGE(MAIN_TAG, "POST failed on a camera");
-        esp_restart();
+        set_led_colour(255, 0, 0); // error colour
+        return;
     }
     ESP_LOGI(MAIN_TAG, "Camera POST sucsess");
+    clear_led();
+
+    ESP_LOGI(MAIN_TAG, "Installing ISR service");
+    gpio_install_isr_service(0);
 
     cam_queue = xQueueCreate(5, sizeof(int));
     motion_proc_queue = xQueueCreate(5, sizeof(jpg_motion_data_t));

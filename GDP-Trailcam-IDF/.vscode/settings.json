@@ -49,7 +49,9 @@
         "stddef.h": "c",
         "esp_jpg_decode.h": "c",
         "bit": "c",
-        "cmath": "c"
+        "cmath": "c",
+        "status_led.h": "c",
+        "led_strip.h": "c"
     },
     "idf.flashType": "UART"
 }

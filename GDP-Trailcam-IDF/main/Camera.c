@@ -73,8 +73,8 @@ esp_err_t cam_POST(const camera_config_t config)
         return ESP_FAIL;
     }
 
-    // Wait 3 seconds to allow the camera to exit any anomalous state
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    // Wait 0.05 seconds to allow the camera to exit any anomalous state
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     // Shutdown camera
     ESP_LOGI(CAM_TAG, "Stopping camera");
