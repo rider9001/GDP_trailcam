@@ -126,6 +126,12 @@ void default_frame_settings(Camera_image_preset_t camera_setting);
 /// and sets all camera power down pins to high (camera off)
 void setup_all_cam_power_down_pins();
 
+/// @brief Holds all power pins high to reduce power consumption in deep sleep
+void prep_power_pins_deep_sleep();
+
+/// @brief De-holds all power pins to allow standard GPIO interaction
+void release_all_power_pins();
+
 /// ------------------------------------------
 /// @brief Activates the camera and attempts to capture 2 frames a set period apart
 ///

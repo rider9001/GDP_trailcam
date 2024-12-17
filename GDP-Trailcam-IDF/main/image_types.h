@@ -72,6 +72,9 @@ typedef struct
 
     // ms of end of second capture
     size_t t2;
+
+    // Count of the capture
+    uint32_t capture_count;
 } jpg_motion_data_t;
 
 /// @brief Struct to gather data and buffer for a grayscale image

@@ -10,7 +10,7 @@
 
 /// ------------------------------------------
 /// @brief Configures the status LED for startup
-void setup_led();
+void setup_onboard_led();
 
 /// ------------------------------------------
 /// @brief Set the led to the desired colour, all input values 0-255

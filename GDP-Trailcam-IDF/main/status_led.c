@@ -10,7 +10,7 @@ static led_strip_handle_t led_strip;
 static char* LED_TAG = "Status_LED";
 
 /// ------------------------------------------
-void setup_led(void)
+void setup_onboard_led(void)
 {
     ESP_LOGI(LED_TAG, "Setting up status LED");
     /* LED strip initialization with the GPIO and pixels number*/
