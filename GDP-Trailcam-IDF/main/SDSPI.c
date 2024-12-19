@@ -549,3 +549,19 @@ bool check_file_SDSPI(const char* path)
     ESP_LOGI(SDSPI_TAG, "Found %s", path);
     return true;
 }
+
+///--------------------------------------------------------
+size_t get_next_capture_num()
+{
+    char capture_dir[16];
+
+    bool dir_exists = true;
+    size_t num = 1;
+    while(dir_exists)
+    {
+        sprintf(capture_dir, CAPTURE_DIR_PREFIX"%u", num);
+        dir_exists = check_dir_SDSPI(capture_dir);
+    }
+
+    return num;
+}

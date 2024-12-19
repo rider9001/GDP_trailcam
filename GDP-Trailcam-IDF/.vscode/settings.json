@@ -51,7 +51,8 @@
         "bit": "c",
         "cmath": "c",
         "status_led.h": "c",
-        "led_strip.h": "c"
+        "led_strip.h": "c",
+        "sdmmc_cmd.h": "c"
     },
     "idf.flashType": "UART"
 }

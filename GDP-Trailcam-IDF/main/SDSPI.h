@@ -43,6 +43,9 @@
 /// @brief Mount point for the sdcard, must be prefixed to all filepaths
 #define MOUNT_POINT "/sdcard"
 
+/// @brief prefix for the directories for all captures made by the camera
+#define CAPTURE_DIR_PREFIX "capture"
+
 /// @brief Maximum wait allowed for using SD SPI functions
 #define MAX_SD_WAIT_MS 15000
 
@@ -200,3 +203,8 @@ bool check_file_SDSPI(const char* path);
 ///
 /// @param path to print contents
 void print_dir_content_in_info_SDSPI(const char* path);
+
+///--------------------------------------------------------
+/// @brief Finds the next avalible number of capture to be written
+/// @return next avalible number
+size_t get_next_capture_num();
