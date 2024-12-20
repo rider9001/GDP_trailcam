@@ -14,6 +14,7 @@
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/timers.h"
+#include "driver/rtc_io.h"
 
 #include "SDSPI.h"
 #include "image_types.h"
@@ -28,10 +29,10 @@ typedef enum
 static const int cam_power_down_pins[] = {CONFIG_PIN_CAM_PWRDN_1, CONFIG_PIN_CAM_PWRDN_2, CONFIG_PIN_CAM_PWRDN_3, CONFIG_PIN_CAM_PWRDN_4};
 
 /// @brief Logic level for camera power off
-#define CAM_POWER_OFF 1
+#define CAM_POWER_OFF 0
 
 /// @brief Logic level for camera power on
-#define CAM_POWER_ON 0
+#define CAM_POWER_ON 1
 
 /// @brief Time to allow camera to intialize state in POST test
 #define CAM_POST_WAIT_TIME_MS 5000
@@ -128,9 +129,6 @@ void setup_all_cam_power_down_pins();
 
 /// @brief Holds all power pins high to reduce power consumption in deep sleep
 void prep_power_pins_deep_sleep();
-
-/// @brief De-holds all power pins to allow standard GPIO interaction
-void release_all_power_pins();
 
 /// ------------------------------------------
 /// @brief Activates the camera and attempts to capture 2 frames a set period apart

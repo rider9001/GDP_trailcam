@@ -45,8 +45,9 @@ void setup_ext0_wakeup()
 
 void enter_deep_sleep()
 {
-    ESP_LOGI(MAIN_TAG, "Holding all power pins");
     prep_power_pins_deep_sleep();
+
+    gpio_deep_sleep_hold_en();
 
     ESP_LOGI(MAIN_TAG, "Setting pin %i to wakeup on level %i", PIR_PIN, PIR_TRIG_LEVEL);
     setup_ext0_wakeup();
@@ -80,7 +81,7 @@ void motion_processing_task()
             {
                 ESP_LOGI(MAIN_TAG, "Writing image subtraction");
                 char* sub_filenm = malloc(32);
-                sprintf(sub_filenm, MOUNT_POINT"/CAP%lu/sub.bin", capture_count);
+                sprintf(sub_filenm, MOUNT_POINT"/CAPTURE%lu/sub.bin", capture_count);
 
                 if (write_data_SDSPI(sub_filenm, sub_img.buf, sub_img.len) != ESP_OK)
                 {
@@ -104,7 +105,7 @@ void motion_processing_task()
 
                     ESP_LOGI(MAIN_TAG, "Writing box image");
                     char* box_filenm = malloc(sizeof(char) * 32);
-                    sprintf(box_filenm, MOUNT_POINT"/CAP%lu/box.bin", capture_count);
+                    sprintf(box_filenm, MOUNT_POINT"/CAPTURE%lu/box.bin", capture_count);
                     if (write_data_SDSPI(box_filenm, sub_img.buf, sub_img.len) != ESP_OK)
                     {
                         ESP_LOGE(MAIN_TAG, "Failed to write bounding box to SD");
@@ -122,7 +123,7 @@ void motion_processing_task()
                     else
                     {
                         char* box_img_filenm = malloc(64);
-                        sprintf(box_img_filenm, MOUNT_POINT"/CAP%lu/box.jpg", capture_count);
+                        sprintf(box_img_filenm, MOUNT_POINT"/CAPTURE%lu/box.jpg", capture_count);
 
                         if (write_data_SDSPI(box_img_filenm, box_img.buf, box_img.len) != ESP_OK)
                         {
@@ -170,7 +171,7 @@ void capture_motion_images(uint32_t capture_num)
     ESP_LOGI(MAIN_TAG, "Time between is: %ums", motion->t2 - motion->t1);
 
     char dir[32];
-    sprintf(dir, MOUNT_POINT"/CAP%lu", capture_num);
+    sprintf(dir, MOUNT_POINT"/CAPTURE%lu", capture_num);
 
     if (create_dir_SDSPI(dir) == ESP_OK)
     {
@@ -244,22 +245,6 @@ void app_main(void)
         ESP_LOGI(MAIN_TAG, "SD SPI POST sucsess");
         clear_led();
 
-        set_led_colour(0, 0, 120); // Cam POST indicator (Blue)
-        // This should always be run first, sets all power down pins as outputs and shuts down all cameras
-        ESP_LOGI(MAIN_TAG, "Setting up cam power pins");
-        setup_all_cam_power_down_pins();
-
-        ESP_LOGI(MAIN_TAG, "POSTing all cameras");
-        if (POST_all_cams() != ESP_OK)
-        {
-            ESP_LOGE(MAIN_TAG, "POST failed on a camera");
-            set_led_colour(255, 0, 0); // error colour
-            return;
-        }
-        ESP_LOGI(MAIN_TAG, "Camera POST sucsess");
-        clear_led();
-
-
         ESP_LOGI(MAIN_TAG, "NVS erase and test");
         if (nvs_flash_init() != ESP_OK)
         {
@@ -278,13 +263,28 @@ void app_main(void)
             return;
         }
 
-        esp_err_t err = nvs_set_u32(my_handle, NVS_CAP_COUNT_KEY, 1);
+        esp_err_t err = nvs_set_u32(my_handle, NVS_CAP_COUNT_KEY, get_next_capture_num());
         if (err != ESP_OK)
         {
             ESP_LOGE(MAIN_TAG, "POST failed on NVS writing, %s", esp_err_to_name(err));
             set_led_colour(255, 0, 0); // error colour
             return;
         }
+
+        set_led_colour(0, 0, 120); // Cam POST indicator (Blue)
+        // This should always be run first, sets all power down pins as outputs and shuts down all cameras
+        ESP_LOGI(MAIN_TAG, "Setting up cam power pins");
+        setup_all_cam_power_down_pins();
+
+        ESP_LOGI(MAIN_TAG, "POSTing all cameras");
+        if (POST_all_cams() != ESP_OK)
+        {
+            ESP_LOGE(MAIN_TAG, "POST failed on a camera");
+            set_led_colour(255, 0, 0); // error colour
+            return;
+        }
+        ESP_LOGI(MAIN_TAG, "Camera POST sucsess");
+        clear_led();
 
         ESP_LOGI(MAIN_TAG, "All POSTs successful");
 
@@ -295,7 +295,6 @@ void app_main(void)
         ESP_LOGI(MAIN_TAG, "Wakeup from PIR trigger");
     }
 
-    release_all_power_pins();
     setup_all_cam_power_down_pins();
 
     nvs_handle_t my_handle;

@@ -12,9 +12,6 @@ static const char* CAM_TAG = "TrailCamera";
 /// ------------------------------------------
 camera_config_t get_default_camera_config(const uint32_t power_down_pin)
 {
-    // Disable sleep hold on pin
-    gpio_hold_dis(power_down_pin);
-
     camera_config_t camera_default_config = {
         .pin_pwdn       = power_down_pin,
         .pin_reset      = CONFIG_PIN_CAM_RESET,
@@ -295,7 +292,7 @@ void default_frame_settings(Camera_image_preset_t camera_setting)
     }
     else
     {
-        ESP_LOGI(CAM_TAG, "Ivalid imaging preset num, no change made.");
+        ESP_LOGI(CAM_TAG, "Invalid imaging preset num, no change made.");
     }
 }
 
@@ -314,6 +311,9 @@ void setup_all_cam_power_down_pins()
         esp_rom_gpio_pad_select_gpio((uint32_t)cam_power_down_pins[i]);
         gpio_set_direction((uint32_t)cam_power_down_pins[i], GPIO_MODE_OUTPUT);
         gpio_set_level((uint32_t)cam_power_down_pins[i], CAM_POWER_OFF);
+
+        gpio_pullup_dis(cam_power_down_pins[i]);
+        gpio_pulldown_en(cam_power_down_pins[i]);
     }
 }
 
@@ -329,27 +329,8 @@ void prep_power_pins_deep_sleep()
             continue;
         }
 
-        esp_rom_gpio_pad_select_gpio((uint32_t)cam_power_down_pins[i]);
-        gpio_set_direction((uint32_t)cam_power_down_pins[i], GPIO_MODE_OUTPUT);
-        gpio_set_level((uint32_t)cam_power_down_pins[i], CAM_POWER_OFF);
-
-        gpio_hold_en((uint32_t)cam_power_down_pins[i]);
-    }
-}
-
-/// ------------------------------------------
-void release_all_power_pins()
-{
-    size_t cam_list_sz = sizeof(cam_power_down_pins) / sizeof(cam_power_down_pins[0]);
-    for (size_t i = 0; i < cam_list_sz; i++)
-    {
-        if (cam_power_down_pins[i] < 0)
-        {
-            ESP_LOGW(CAM_TAG, "Camera %i PWR_DWN is -1, no release made", i+1);
-            continue;
-        }
-
-        gpio_hold_dis((uint32_t)cam_power_down_pins[i]);
+        rtc_gpio_pullup_en(cam_power_down_pins[i]);
+        rtc_gpio_pulldown_dis(cam_power_down_pins[i]);
     }
 }
 

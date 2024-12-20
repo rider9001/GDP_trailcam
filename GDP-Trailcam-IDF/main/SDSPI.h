@@ -47,7 +47,7 @@
 #define CAPTURE_DIR_PREFIX "capture"
 
 /// @brief Maximum wait allowed for using SD SPI functions
-#define MAX_SD_WAIT_MS 15000
+#define MAX_SD_WAIT_MS (30 * 1000)
 
 /// README: Any static buffer above this value tends to result in a range of errors, use malloc if needed
 /// @brief Max length allowed for a filename under unix

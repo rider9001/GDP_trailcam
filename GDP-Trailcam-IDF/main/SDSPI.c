@@ -360,7 +360,7 @@ bool check_dir_SDSPI(const char* path)
     ESP_LOGI(SDSPI_TAG, "Checking existence of dir %s", path);
     DIR* dir = opendir(path);
     bool readable = dir != NULL;
-    closedir(dir);
+    if (readable) closedir(dir);
 
     xSemaphoreGive(SD_SPI_Mutex);
 
@@ -553,15 +553,19 @@ bool check_file_SDSPI(const char* path)
 ///--------------------------------------------------------
 size_t get_next_capture_num()
 {
-    char capture_dir[16];
+    char *capture_dir = malloc(64);
 
     bool dir_exists = true;
     size_t num = 1;
     while(dir_exists)
     {
-        sprintf(capture_dir, CAPTURE_DIR_PREFIX"%u", num);
+        strcpy(capture_dir, MOUNT_POINT);
+        sprintf(capture_dir,  CAPTURE_DIR_PREFIX"%u", num);
         dir_exists = check_dir_SDSPI(capture_dir);
     }
 
+    free(capture_dir);
+
+    ESP_LOGI(SDSPI_TAG, "Next capture number is: %u", num);
     return num;
 }
