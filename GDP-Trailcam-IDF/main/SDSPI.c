@@ -358,9 +358,8 @@ bool check_dir_SDSPI(const char* path)
     }
 
     ESP_LOGI(SDSPI_TAG, "Checking existence of dir %s", path);
-    DIR* dir = opendir(path);
-    bool readable = dir != NULL;
-    if (readable) closedir(dir);
+    struct stat sb;
+    bool readable = (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode));
 
     xSemaphoreGive(SD_SPI_Mutex);
 
@@ -553,14 +552,14 @@ bool check_file_SDSPI(const char* path)
 ///--------------------------------------------------------
 size_t get_next_capture_num()
 {
-    char *capture_dir = malloc(64);
+    char *capture_dir = malloc(32);
 
     bool dir_exists = true;
-    size_t num = 1;
+    size_t num = 0;
     while(dir_exists)
     {
-        strcpy(capture_dir, MOUNT_POINT);
-        sprintf(capture_dir,  CAPTURE_DIR_PREFIX"%u", num);
+        num++;
+        sprintf(capture_dir,  MOUNT_POINT"/"CAPTURE_DIR_PREFIX"%u", num);
         dir_exists = check_dir_SDSPI(capture_dir);
     }
 

@@ -318,23 +318,6 @@ void setup_all_cam_power_down_pins()
 }
 
 /// ------------------------------------------
-void prep_power_pins_deep_sleep()
-{
-    size_t cam_list_sz = sizeof(cam_power_down_pins) / sizeof(cam_power_down_pins[0]);
-    for (size_t i = 0; i < cam_list_sz; i++)
-    {
-        if (cam_power_down_pins[i] < 0)
-        {
-            ESP_LOGW(CAM_TAG, "Camera %i PWR_DWN is -1, no hold made", i+1);
-            continue;
-        }
-
-        rtc_gpio_pullup_en(cam_power_down_pins[i]);
-        rtc_gpio_pulldown_dis(cam_power_down_pins[i]);
-    }
-}
-
-/// ------------------------------------------
 jpg_motion_data_t* get_motion_capture(camera_config_t config)
 {
     jpg_motion_data_t* motion = malloc(sizeof(jpg_motion_data_t));

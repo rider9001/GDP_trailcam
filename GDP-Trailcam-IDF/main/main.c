@@ -45,8 +45,6 @@ void setup_ext0_wakeup()
 
 void enter_deep_sleep()
 {
-    prep_power_pins_deep_sleep();
-
     gpio_deep_sleep_hold_en();
 
     ESP_LOGI(MAIN_TAG, "Setting pin %i to wakeup on level %i", PIR_PIN, PIR_TRIG_LEVEL);
@@ -330,7 +328,7 @@ void app_main(void)
     {
         capture_motion_images(next_capture_count++);
         // Wait 5 seconds to see if motion has stopped
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(10000));
 
         if (gpio_get_level(PIR_PIN) != PIR_TRIG_LEVEL)
         {

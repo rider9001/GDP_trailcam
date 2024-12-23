@@ -44,7 +44,7 @@
 #define MOUNT_POINT "/sdcard"
 
 /// @brief prefix for the directories for all captures made by the camera
-#define CAPTURE_DIR_PREFIX "capture"
+#define CAPTURE_DIR_PREFIX "CAPTURE"
 
 /// @brief Maximum wait allowed for using SD SPI functions
 #define MAX_SD_WAIT_MS (30 * 1000)
