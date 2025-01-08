@@ -359,8 +359,8 @@ void app_main(void)
             enter_deep_sleep();
         }
 
-        // Wait 5 seconds and check if the camera processing task has reached the end of its queue
+        // Wait 1 second and check if the camera processing task has reached the end of its queue
         ESP_LOGI(MAIN_TAG, "Processing active, waiting");
-        vTaskDelay(pdMS_TO_TICKS(3000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

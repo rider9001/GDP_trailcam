@@ -29,10 +29,10 @@
 typedef struct
 {
     // Point x coord
-    size_t x;
+    int x;
 
     // Point y coord
-    size_t y;
+    int y;
 } point_t;
 
 /// ------------------------------------------

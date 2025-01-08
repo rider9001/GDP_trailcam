@@ -63,14 +63,14 @@ bool find_motion_centre(grayscale_image_t* motion_img, point_t* outPoint)
 
     // Calculate the resulting average x/y point then offset it by half the bounding box
     // and clip to inside the image to create a valid bounding box start point
-    outPoint->x = (x_sum / motion_pix_count) - (BOUNDING_BOX_EDGE_LEN/2);
-    // (-1 is due to the x/y coords starting at 0,0)
+    outPoint->x = ((float)x_sum / (float)motion_pix_count) - (BOUNDING_BOX_EDGE_LEN/2);
+    // (+1 is due to the x/y coords ending at width/height -1)
     if ( outPoint->x > (motion_img->width - (1 + BOUNDING_BOX_EDGE_LEN)) )
     {
         outPoint->x = motion_img->width - (1 + BOUNDING_BOX_EDGE_LEN);
     }
 
-    outPoint->y = y_sum / motion_pix_count - (BOUNDING_BOX_EDGE_LEN/2);
+    outPoint->y = ((float)y_sum / (float)motion_pix_count) - (BOUNDING_BOX_EDGE_LEN/2);
     if ( outPoint->y > (motion_img->height - (1 + BOUNDING_BOX_EDGE_LEN)) )
     {
         outPoint->y = motion_img->height - (1 + BOUNDING_BOX_EDGE_LEN);
