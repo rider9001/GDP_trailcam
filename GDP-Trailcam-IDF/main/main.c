@@ -51,6 +51,7 @@ void enter_deep_sleep()
     setup_ext0_wakeup();
 
     ESP_LOGI(MAIN_TAG, "Entering deep sleep zzz...");
+    esp_deep_sleep_disable_rom_logging();
     esp_deep_sleep_start();
 }
 
