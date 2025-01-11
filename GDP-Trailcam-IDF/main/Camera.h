@@ -43,6 +43,7 @@ static const int cam_power_down_pins[] = {CONFIG_PIN_CAM_PWRDN_1, CONFIG_PIN_CAM
 /// @brief Target delay in time between the two images in the motion capture
 #define CAM_MOTION_CAPTURE_WAIT_MS 50
 
+/// @brief Light adjustment setting for camera captures, prob best to set this via light level detection at some point
 #define TEMP_GLOBAL_IMAGE_SET DAYLIGHT
 
 /// ------------------------------------------
