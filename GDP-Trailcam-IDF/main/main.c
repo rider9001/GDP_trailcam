@@ -336,7 +336,7 @@ void app_main(void)
             break;
         }
         cont_capture_count++;
-        vTaskResume(motion_proc_queue);
+        vTaskResume(motion_task_handle);
     }
 
     if (cont_capture_count < MAX_CONT_CAP)
