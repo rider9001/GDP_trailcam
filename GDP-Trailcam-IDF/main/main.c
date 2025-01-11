@@ -207,7 +207,7 @@ void capture_motion_images(uint32_t capture_num)
 
     // The motion set should be considered transfered to the processing task
     ESP_LOGI(MAIN_TAG, "Sending capture to motion analysis");
-    xQueueSend(motion_proc_queue, motion, NULL);
+    xQueueSend(motion_proc_queue, motion, 0);
 }
 
 void app_main(void)
